@@ -51,4 +51,5 @@ class App {
   }
 }
 
-export default App;
+const appInstance = new App();
+export default appInstance.app;

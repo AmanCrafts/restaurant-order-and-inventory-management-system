@@ -4,6 +4,9 @@ generator client {
 
 datasource db {
     provider = "postgresql"
+    url      = env("DATABASE_URL")
+    // Use directUrl for migrations when using connection pooler
+    directUrl = env("DIRECT_URL")
 }
 
 model Restaurant {
