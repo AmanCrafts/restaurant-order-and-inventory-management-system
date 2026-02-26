@@ -1,8 +1,12 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { config } from './config/config';
+import routes from './api/routes';
+import {
+  errorHandler,
+  notFoundHandler,
+} from './shared/middleware/error-handler';
 
 class App {
   public app: Application;
@@ -23,31 +27,25 @@ class App {
   }
 
   private initializeRoutes(): void {
-    // Placeholder for future routes
-    this.app.get('/', (req: Request, res: Response) => {
-      res.json({ message: 'Welcome to the Restaurant Management API' });
+    // API routes
+    this.app.use('/api/v1', routes);
+
+    // Welcome route
+    this.app.get('/', (_req, res) => {
+      res.json({
+        message: 'Welcome to the Restaurant Management API',
+        version: '1.0.0',
+        documentation: '/api/docs',
+      });
     });
   }
 
   private initializeErrorHandling(): void {
-    this.app.use(
-      (err: any, req: Request, res: Response, _next: NextFunction) => {
-        const status = (err as any).status || 500;
-        const message = err.message || 'Something went wrong';
-        res.status(status).json({
-          status,
-          message,
-        });
-      },
-    );
-  }
+    // 404 handler
+    this.app.use(notFoundHandler);
 
-  public listen(): void {
-    this.app.listen(config.port, () => {
-      console.log(`=================================`);
-      console.log(`🚀 App listening on http://localhost:${config.port}`);
-      console.log(`=================================`);
-    });
+    // Global error handler
+    this.app.use(errorHandler);
   }
 }
 
