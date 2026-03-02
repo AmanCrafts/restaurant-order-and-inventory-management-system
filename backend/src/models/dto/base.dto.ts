@@ -71,11 +71,7 @@ export class PaginatedResponseDto<T> {
     hasPrevious: boolean;
   };
 
-  constructor(
-    data: T[],
-    total: number,
-    pagination: PaginationDto
-  ) {
+  constructor(data: T[], total: number, pagination: PaginationDto) {
     this.data = data;
     const totalPages = Math.ceil(total / pagination.limit);
     this.meta = {
@@ -102,7 +98,7 @@ export class ApiResponseDto<T> {
     status: 'success' | 'error',
     data?: T,
     message?: string,
-    errors?: Record<string, string[]>
+    errors?: Record<string, string[]>,
   ) {
     this.status = status;
     this.data = data;
@@ -114,7 +110,10 @@ export class ApiResponseDto<T> {
     return new ApiResponseDto('success', data, message);
   }
 
-  static error(message: string, errors?: Record<string, string[]>): ApiResponseDto<null> {
+  static error(
+    message: string,
+    errors?: Record<string, string[]>,
+  ): ApiResponseDto<null> {
     return new ApiResponseDto('error', null, message, errors);
   }
 }
