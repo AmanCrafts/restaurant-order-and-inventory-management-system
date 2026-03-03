@@ -12,11 +12,7 @@ export class CreateRestaurantRequestDto extends BaseCreateRequestDto {
   address: string;
   contactNumber: string;
 
-  constructor(data: {
-    name: string;
-    address: string;
-    contactNumber: string;
-  }) {
+  constructor(data: { name: string; address: string; contactNumber: string }) {
     super();
     this.name = data.name.trim();
     this.address = data.address.trim();
@@ -24,7 +20,7 @@ export class CreateRestaurantRequestDto extends BaseCreateRequestDto {
   }
 
   validate(): boolean {
-    const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+    const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
     return (
       this.name.length >= 2 &&
       this.address.length >= 5 &&
@@ -65,7 +61,8 @@ export class UpdateRestaurantRequestDto extends BaseUpdateRequestDto {
 
   validate(): boolean {
     if (this.contactNumber) {
-      const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+      const phoneRegex =
+        /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
       if (!phoneRegex.test(this.contactNumber)) return false;
     }
     if (this.name && this.name.length < 2) return false;
@@ -77,7 +74,8 @@ export class UpdateRestaurantRequestDto extends BaseUpdateRequestDto {
     const result: Record<string, unknown> = {};
     if (this.name !== undefined) result.name = this.name;
     if (this.address !== undefined) result.address = this.address;
-    if (this.contactNumber !== undefined) result.contactNumber = this.contactNumber;
+    if (this.contactNumber !== undefined)
+      result.contactNumber = this.contactNumber;
     if (this.isActive !== undefined) result.isActive = this.isActive;
     return result;
   }

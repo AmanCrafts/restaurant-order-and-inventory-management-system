@@ -21,14 +21,14 @@ export class CreateOrderRequestDto extends BaseCreateRequestDto {
     return (
       this.tableId.length > 0 &&
       this.items.length > 0 &&
-      this.items.every(item => item.validate())
+      this.items.every((item) => item.validate())
     );
   }
 
   toJSON(): Record<string, unknown> {
     return {
       tableId: this.tableId,
-      items: this.items.map(item => item.toJSON()),
+      items: this.items.map((item) => item.toJSON()),
     };
   }
 }
