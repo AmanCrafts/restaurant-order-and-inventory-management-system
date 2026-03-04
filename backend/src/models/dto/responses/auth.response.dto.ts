@@ -1,7 +1,7 @@
 /**
  * Authentication Response DTOs
  */
-import { BaseResponseDto } from '../base.dto';
+// import { BaseResponseDto } from '../base.dto';
 
 /**
  * User Data in Auth Responses
