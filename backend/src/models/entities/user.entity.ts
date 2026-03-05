@@ -28,7 +28,7 @@ export class User extends BaseEntity {
     role: UserRole,
     createdAt?: Date,
     updatedAt?: Date,
-    isActive: boolean = true
+    isActive: boolean = true,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._restaurantId = restaurantId;
@@ -114,13 +114,13 @@ export class User extends BaseEntity {
 
   // Association methods
   addOrder(order: Order): void {
-    if (!this._orders.find(o => o.id === order.id)) {
+    if (!this._orders.find((o) => o.id === order.id)) {
       this._orders.push(order);
     }
   }
 
   removeOrder(orderId: string): void {
-    this._orders = this._orders.filter(o => o.id !== orderId);
+    this._orders = this._orders.filter((o) => o.id !== orderId);
   }
 
   addNotification(notification: Notification): void {
@@ -144,7 +144,8 @@ export class User extends BaseEntity {
    */
   canManageOrder(order: Order): boolean {
     if (this._role === UserRole.ADMIN) return true;
-    if (this._role === UserRole.WAITER && order.waiterId === this._id) return true;
+    if (this._role === UserRole.WAITER && order.waiterId === this._id)
+      return true;
     return false;
   }
 
@@ -173,7 +174,7 @@ export class User extends BaseEntity {
    * Get pending orders for waiter
    */
   getPendingOrders(): Order[] {
-    return this._orders.filter(o => o.isPending());
+    return this._orders.filter((o) => o.isPending());
   }
 
   validate(): boolean {
@@ -228,7 +229,7 @@ export class User extends BaseEntity {
       data.role as UserRole,
       data.created_at,
       undefined,
-      data.is_active
+      data.is_active,
     );
   }
 }

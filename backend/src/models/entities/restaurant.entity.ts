@@ -27,7 +27,7 @@ export class Restaurant extends BaseEntity {
     contactNumber: string,
     createdAt?: Date,
     updatedAt?: Date,
-    isActive: boolean = true
+    isActive: boolean = true,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._name = name;
@@ -90,7 +90,7 @@ export class Restaurant extends BaseEntity {
       throw new Error('Contact number cannot be empty');
     }
     // Basic phone validation
-    const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+    const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
     if (!phoneRegex.test(value)) {
       throw new Error('Invalid contact number format');
     }
@@ -100,55 +100,55 @@ export class Restaurant extends BaseEntity {
 
   // Association methods
   addUser(user: User): void {
-    if (!this._users.find(u => u.id === user.id)) {
+    if (!this._users.find((u) => u.id === user.id)) {
       this._users.push(user);
       this.touch();
     }
   }
 
   removeUser(userId: string): void {
-    this._users = this._users.filter(u => u.id !== userId);
+    this._users = this._users.filter((u) => u.id !== userId);
     this.touch();
   }
 
   addMenu(menu: Menu): void {
-    if (!this._menus.find(m => m.id === menu.id)) {
+    if (!this._menus.find((m) => m.id === menu.id)) {
       this._menus.push(menu);
       this.touch();
     }
   }
 
   removeMenu(menuId: string): void {
-    this._menus = this._menus.filter(m => m.id !== menuId);
+    this._menus = this._menus.filter((m) => m.id !== menuId);
     this.touch();
   }
 
   addInventoryItem(item: InventoryItem): void {
-    if (!this._inventoryItems.find(i => i.id === item.id)) {
+    if (!this._inventoryItems.find((i) => i.id === item.id)) {
       this._inventoryItems.push(item);
       this.touch();
     }
   }
 
   removeInventoryItem(itemId: string): void {
-    this._inventoryItems = this._inventoryItems.filter(i => i.id !== itemId);
+    this._inventoryItems = this._inventoryItems.filter((i) => i.id !== itemId);
     this.touch();
   }
 
   addTable(table: Table): void {
-    if (!this._tables.find(t => t.id === table.id)) {
+    if (!this._tables.find((t) => t.id === table.id)) {
       this._tables.push(table);
       this.touch();
     }
   }
 
   removeTable(tableId: string): void {
-    this._tables = this._tables.filter(t => t.id !== tableId);
+    this._tables = this._tables.filter((t) => t.id !== tableId);
     this.touch();
   }
 
   addOrder(order: Order): void {
-    if (!this._orders.find(o => o.id === order.id)) {
+    if (!this._orders.find((o) => o.id === order.id)) {
       this._orders.push(order);
       this.touch();
     }
@@ -158,21 +158,21 @@ export class Restaurant extends BaseEntity {
    * Get active tables count
    */
   getActiveTablesCount(): number {
-    return this._tables.filter(t => t.isActive).length;
+    return this._tables.filter((t) => t.isActive).length;
   }
 
   /**
    * Get active menus count
    */
   getActiveMenusCount(): number {
-    return this._menus.filter(m => m.isActive).length;
+    return this._menus.filter((m) => m.isActive).length;
   }
 
   /**
    * Get low stock inventory items
    */
   getLowStockItems(): InventoryItem[] {
-    return this._inventoryItems.filter(item => item.isLowStock());
+    return this._inventoryItems.filter((item) => item.isLowStock());
   }
 
   validate(): boolean {
@@ -221,7 +221,7 @@ export class Restaurant extends BaseEntity {
       data.contact_number,
       data.created_at,
       undefined,
-      data.is_active
+      data.is_active,
     );
   }
 }

@@ -9,7 +9,12 @@ export abstract class BaseEntity {
   protected _updatedAt: Date;
   protected _isActive: boolean;
 
-  constructor(id: string, createdAt?: Date, updatedAt?: Date, isActive: boolean = true) {
+  constructor(
+    id: string,
+    createdAt?: Date,
+    updatedAt?: Date,
+    isActive: boolean = true,
+  ) {
     this._id = id;
     this._createdAt = createdAt || new Date();
     this._updatedAt = updatedAt || new Date();
