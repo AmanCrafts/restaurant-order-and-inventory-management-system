@@ -20,7 +20,7 @@ export class Menu extends BaseEntity {
     restaurantId: string,
     isActive: boolean = true,
     createdAt?: Date,
-    updatedAt?: Date
+    updatedAt?: Date,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._restaurantId = restaurantId;
@@ -48,7 +48,7 @@ export class Menu extends BaseEntity {
 
   // Category management
   addCategory(category: MenuCategory): void {
-    if (!this._categories.find(c => c.id === category.id)) {
+    if (!this._categories.find((c) => c.id === category.id)) {
       category.menu = this;
       this._categories.push(category);
       this.touch();
@@ -56,44 +56,50 @@ export class Menu extends BaseEntity {
   }
 
   removeCategory(categoryId: string): void {
-    this._categories = this._categories.filter(c => c.id !== categoryId);
+    this._categories = this._categories.filter((c) => c.id !== categoryId);
     this.touch();
   }
 
   getCategoryById(categoryId: string): MenuCategory | undefined {
-    return this._categories.find(c => c.id === categoryId);
+    return this._categories.find((c) => c.id === categoryId);
   }
 
   getCategoryByName(name: string): MenuCategory | undefined {
-    return this._categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+    return this._categories.find(
+      (c) => c.name.toLowerCase() === name.toLowerCase(),
+    );
   }
 
   /**
    * Get all items across all categories
    */
   getAllItems(): MenuItem[] {
-    return this._categories.flatMap(c => c.items);
+    return this._categories.flatMap((c) => c.items);
   }
 
   /**
    * Get available items only
    */
   getAvailableItems(): MenuItem[] {
-    return this.getAllItems().filter(item => item.isAvailable);
+    return this.getAllItems().filter((item) => item.isAvailable);
   }
 
   /**
    * Search items by name
    */
   searchItems(query: string): MenuItem[] {
-    return this.getAllItems().filter(item =
-      item.name.toLowerCase().includes(query.toLowerCase())
+    return this.getAllItems().filter(
+      (item = item.name.toLowerCase().includes(query.toLowerCase())),
     );
   }
 
   validate(): boolean {
-    return this._id !== undefined && this._id.length > 0 &&
-           this._restaurantId !== undefined && this._restaurantId.length > 0;
+    return (
+      this._id !== undefined &&
+      this._id.length > 0 &&
+      this._restaurantId !== undefined &&
+      this._restaurantId.length > 0
+    );
   }
 
   toJSON(): Record<string, unknown> {
@@ -112,11 +118,7 @@ export class Menu extends BaseEntity {
     restaurant_id: string;
     is_active: boolean;
   }): Menu {
-    return new Menu(
-      data.id,
-      data.restaurant_id,
-      data.is_active
-    );
+    return new Menu(data.id, data.restaurant_id, data.is_active);
   }
 }
 
@@ -136,7 +138,7 @@ export class MenuCategory extends BaseEntity {
     name: string,
     createdAt?: Date,
     updatedAt?: Date,
-    isActive: boolean = true
+    isActive: boolean = true,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._menuId = menuId;
@@ -178,7 +180,7 @@ export class MenuCategory extends BaseEntity {
 
   // Item management
   addItem(item: MenuItem): void {
-    if (!this._items.find(i => i.id === item.id)) {
+    if (!this._items.find((i) => i.id === item.id)) {
       item.category = this;
       this._items.push(item);
       this.touch();
@@ -186,25 +188,30 @@ export class MenuCategory extends BaseEntity {
   }
 
   removeItem(itemId: string): void {
-    this._items = this._items.filter(i => i.id !== itemId);
+    this._items = this._items.filter((i) => i.id !== itemId);
     this.touch();
   }
 
   getItemById(itemId: string): MenuItem | undefined {
-    return this._items.find(i => i.id === itemId);
+    return this._items.find((i) => i.id === itemId);
   }
 
   /**
    * Get available items in this category
    */
   getAvailableItems(): MenuItem[] {
-    return this._items.filter(i => i.isAvailable);
+    return this._items.filter((i) => i.isAvailable);
   }
 
   validate(): boolean {
-    return this._id !== undefined && this._id.length > 0 &&
-           this._menuId !== undefined && this._menuId.length > 0 &&
-           this._name !== undefined && this._name.length > 0;
+    return (
+      this._id !== undefined &&
+      this._id.length > 0 &&
+      this._menuId !== undefined &&
+      this._menuId.length > 0 &&
+      this._name !== undefined &&
+      this._name.length > 0
+    );
   }
 
   toJSON(): Record<string, unknown> {
@@ -223,11 +230,7 @@ export class MenuCategory extends BaseEntity {
     menu_id: string;
     name: string;
   }): MenuCategory {
-    return new MenuCategory(
-      data.id,
-      data.menu_id,
-      data.name
-    );
+    return new MenuCategory(data.id, data.menu_id, data.name);
   }
 }
 
@@ -255,7 +258,7 @@ export class MenuItem extends BaseEntity {
     preparationTime: number = 15,
     createdAt?: Date,
     updatedAt?: Date,
-    isActive: boolean = true
+    isActive: boolean = true,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._categoryId = categoryId;
@@ -333,10 +336,13 @@ export class MenuItem extends BaseEntity {
 
   // Ingredient management
   addIngredient(ingredient: MenuItemIngredient): void {
-    if (!this._ingredients.find(i =>
-      i.menuItemId === ingredient.menuItemId &&
-      i.inventoryItemId === ingredient.inventoryItemId
-    )) {
+    if (
+      !this._ingredients.find(
+        (i) =>
+          i.menuItemId === ingredient.menuItemId &&
+          i.inventoryItemId === ingredient.inventoryItemId,
+      )
+    ) {
       ingredient.menuItem = this;
       this._ingredients.push(ingredient);
       this.touch();
@@ -344,7 +350,9 @@ export class MenuItem extends BaseEntity {
   }
 
   removeIngredient(inventoryItemId: string): void {
-    this._ingredients = this._ingredients.filter(i => i.inventoryItemId !== inventoryItemId);
+    this._ingredients = this._ingredients.filter(
+      (i) => i.inventoryItemId !== inventoryItemId,
+    );
     this.touch();
   }
 
@@ -353,7 +361,7 @@ export class MenuItem extends BaseEntity {
    */
   canBePrepared(): boolean {
     if (!this._isAvailable) return false;
-    return this._ingredients.every(ing => ing.hasSufficientStock());
+    return this._ingredients.every((ing) => ing.hasSufficientStock());
   }
 
   /**
@@ -362,16 +370,21 @@ export class MenuItem extends BaseEntity {
   getIngredientCost(): Decimal {
     return this._ingredients.reduce(
       (sum, ing) => sum.add(ing.cost),
-      new Decimal(0)
+      new Decimal(0),
     );
   }
 
   validate(): boolean {
-    return this._id !== undefined && this._id.length > 0 &&
-           this._categoryId !== undefined && this._categoryId.length > 0 &&
-           this._name !== undefined && this._name.length > 0 &&
-           this._price.greaterThanOrEqualTo(0) &&
-           this._preparationTime >= 0;
+    return (
+      this._id !== undefined &&
+      this._id.length > 0 &&
+      this._categoryId !== undefined &&
+      this._categoryId.length > 0 &&
+      this._name !== undefined &&
+      this._name.length > 0 &&
+      this._price.greaterThanOrEqualTo(0) &&
+      this._preparationTime >= 0
+    );
   }
 
   toJSON(): Record<string, unknown> {
@@ -401,7 +414,7 @@ export class MenuItem extends BaseEntity {
       data.name,
       data.price.toNumber(),
       data.is_available,
-      data.preparation_time
+      data.preparation_time,
     );
   }
 }

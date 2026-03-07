@@ -29,7 +29,7 @@ export class InventoryItem extends BaseEntity {
     reorderThreshold: number,
     createdAt?: Date,
     updatedAt?: Date,
-    isActive: boolean = true
+    isActive: boolean = true,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._restaurantId = restaurantId;
@@ -168,13 +168,20 @@ export class InventoryItem extends BaseEntity {
    * Calculate how much more stock is needed
    */
   getReorderAmount(): number {
-    const deficit = this._reorderThreshold.toNumber() - this._quantity.toNumber();
+    const deficit =
+      this._reorderThreshold.toNumber() - this._quantity.toNumber();
     return deficit > 0 ? deficit : 0;
   }
 
   // MenuItemIngredient association
   addIngredient(ingredient: MenuItemIngredient): void {
-    if (!this._ingredients.find(i => i.inventoryItemId === ingredient.inventoryItemId && i.menuItemId === ingredient.menuItemId)) {
+    if (
+      !this._ingredients.find(
+        (i) =>
+          i.inventoryItemId === ingredient.inventoryItemId &&
+          i.menuItemId === ingredient.menuItemId,
+      )
+    ) {
       ingredient.inventoryItem = this;
       this._ingredients.push(ingredient);
     }
@@ -231,7 +238,7 @@ export class InventoryItem extends BaseEntity {
       data.reorder_threshold,
       data.created_at,
       undefined,
-      data.is_active
+      data.is_active,
     );
   }
 }
@@ -253,7 +260,7 @@ export class MenuItemIngredient extends BaseEntity {
     inventoryItemId: string,
     quantityRequired: number,
     createdAt?: Date,
-    updatedAt?: Date
+    updatedAt?: Date,
   ) {
     super(`${menuItemId}_${inventoryItemId}`, createdAt, updatedAt, true);
     this._menuItemId = menuItemId;
@@ -310,7 +317,9 @@ export class MenuItemIngredient extends BaseEntity {
    */
   hasSufficientStock(): boolean {
     if (!this._inventoryItem) return false;
-    return this._inventoryItem.hasSufficientStock(this._quantityRequired.toNumber());
+    return this._inventoryItem.hasSufficientStock(
+      this._quantityRequired.toNumber(),
+    );
   }
 
   /**

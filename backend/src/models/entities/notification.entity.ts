@@ -24,7 +24,7 @@ export class Notification extends BaseEntity {
     metadata?: Record<string, unknown>,
     actionUrl?: string,
     createdAt?: Date,
-    updatedAt?: Date
+    updatedAt?: Date,
   ) {
     super(id, createdAt, updatedAt, true);
     this._userId = userId;
@@ -108,8 +108,10 @@ export class Notification extends BaseEntity {
    * Check if notification is urgent
    */
   isUrgent(): boolean {
-    return this._type === NotificationType.URGENT ||
-           this._type === NotificationType.LOW_STOCK;
+    return (
+      this._type === NotificationType.URGENT ||
+      this._type === NotificationType.LOW_STOCK
+    );
   }
 
   /**
@@ -190,7 +192,7 @@ export class Notification extends BaseEntity {
       (data.type as NotificationType) || NotificationType.INFO,
       data.metadata,
       data.action_url,
-      data.sent_at
+      data.sent_at,
     );
 
     if (data.is_read) {
@@ -221,45 +223,60 @@ export enum NotificationType {
  * Creates common notification types
  */
 export class NotificationFactory {
-  static createOrderReadyNotification(userId: string, orderId: string, tableNumber: number): Notification {
+  static createOrderReadyNotification(
+    userId: string,
+    orderId: string,
+    tableNumber: number,
+  ): Notification {
     return new Notification(
       `notif_${Date.now()}`,
       userId,
       `Order for Table ${tableNumber} is ready!`,
       NotificationType.ORDER_READY,
       { orderId, tableNumber },
-      `/orders/${orderId}`
+      `/orders/${orderId}`,
     );
   }
 
-  static createLowStockNotification(userId: string, itemName: string, currentStock: number): Notification {
+  static createLowStockNotification(
+    userId: string,
+    itemName: string,
+    currentStock: number,
+  ): Notification {
     return new Notification(
       `notif_${Date.now()}`,
       userId,
       `Low stock alert: ${itemName} (${currentStock} remaining)`,
       NotificationType.LOW_STOCK,
       { itemName, currentStock },
-      '/inventory'
+      '/inventory',
     );
   }
 
-  static createNewOrderNotification(userId: string, orderId: string, tableNumber: number): Notification {
+  static createNewOrderNotification(
+    userId: string,
+    orderId: string,
+    tableNumber: number,
+  ): Notification {
     return new Notification(
       `notif_${Date.now()}`,
       userId,
       `New order received for Table ${tableNumber}`,
       NotificationType.NEW_ORDER,
       { orderId, tableNumber },
-      `/kitchen/orders/${orderId}`
+      `/kitchen/orders/${orderId}`,
     );
   }
 
-  static createSystemNotification(userId: string, message: string): Notification {
+  static createSystemNotification(
+    userId: string,
+    message: string,
+  ): Notification {
     return new Notification(
       `notif_${Date.now()}`,
       userId,
       message,
-      NotificationType.SYSTEM
+      NotificationType.SYSTEM,
     );
   }
 }
