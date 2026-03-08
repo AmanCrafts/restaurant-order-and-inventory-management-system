@@ -24,7 +24,7 @@ export class Table extends BaseEntity {
     status: TableStatus = TableStatus.FREE,
     createdAt?: Date,
     updatedAt?: Date,
-    isActive: boolean = true
+    isActive: boolean = true,
   ) {
     super(id, createdAt, updatedAt, isActive);
     this._restaurantId = restaurantId;
@@ -132,7 +132,7 @@ export class Table extends BaseEntity {
 
   // Order association
   addOrder(order: Order): void {
-    if (!this._orders.find(o => o.id === order.id)) {
+    if (!this._orders.find((o) => o.id === order.id)) {
       this._orders.push(order);
       // Auto-occupy table when order is added
       if (this._status === TableStatus.FREE) {
@@ -143,7 +143,7 @@ export class Table extends BaseEntity {
   }
 
   removeOrder(orderId: string): void {
-    this._orders = this._orders.filter(o => o.id !== orderId);
+    this._orders = this._orders.filter((o) => o.id !== orderId);
     // Free table if no active orders
     if (!this.hasActiveOrders() && this._status === TableStatus.OCCUPIED) {
       this._status = TableStatus.FREE;
@@ -155,7 +155,7 @@ export class Table extends BaseEntity {
    * Get active (non-closed) orders for this table
    */
   getActiveOrders(): Order[] {
-    return this._orders.filter(o => !o.isClosed());
+    return this._orders.filter((o) => !o.isClosed());
   }
 
   /**
@@ -231,7 +231,7 @@ export class Table extends BaseEntity {
       data.status as TableStatus,
       data.created_at,
       undefined,
-      data.is_active
+      data.is_active,
     );
   }
 }

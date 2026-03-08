@@ -4,7 +4,10 @@ import { Table } from './table.entity';
 import { User } from './user.entity';
 import { MenuItem } from './menu.entity';
 import { Bill } from './bill.entity';
-import { OrderStatus, canTransitionOrderStatus } from '../../shared/constants/order-status';
+import {
+  OrderStatus,
+  canTransitionOrderStatus,
+} from '../../shared/constants/order-status';
 import { UserRole } from '../../shared/constants/roles';
 
 /**
@@ -26,7 +29,11 @@ export class Order extends BaseEntity {
   private _status: OrderStatus;
   private _items: OrderItem[] = [];
   private _bill: Bill | null = null;
-  private _statusHistory: { status: OrderStatus; timestamp: Date; notes?: string }[] = [];
+  private _statusHistory: {
+    status: OrderStatus;
+    timestamp: Date;
+    notes?: string;
+  }[] = [];
 
   constructor(
     id: string,
@@ -35,7 +42,7 @@ export class Order extends BaseEntity {
     waiterId: string,
     status: OrderStatus = OrderStatus.CREATED,
     createdAt?: Date,
-    updatedAt?: Date
+    updatedAt?: Date,
   ) {
     super(id, createdAt, updatedAt, true);
     this._restaurantId = restaurantId;
@@ -119,11 +126,15 @@ export class Order extends BaseEntity {
   private transitionTo(newStatus: OrderStatus, notes?: string): void {
     if (!canTransitionOrderStatus(this._status, newStatus)) {
       throw new Error(
-        `Invalid status transition from ${this._status} to ${newStatus}`
+        `Invalid status transition from ${this._status} to ${newStatus}`,
       );
     }
     this._status = newStatus;
-    this._statusHistory.push({ status: newStatus, timestamp: new Date(), notes });
+    this._statusHistory.push({
+      status: newStatus,
+      timestamp: new Date(),
+      notes,
+    });
     this.touch();
   }
 
@@ -173,7 +184,10 @@ export class Order extends BaseEntity {
    * Cancel order (special transition)
    */
   cancelOrder(reason: string): void {
-    if (this._status === OrderStatus.CLOSED || this._status === OrderStatus.BILLED) {
+    if (
+      this._status === OrderStatus.CLOSED ||
+      this._status === OrderStatus.BILLED
+    ) {
       throw new Error('Cannot cancel closed or billed order');
     }
     this._status = OrderStatus.CLOSED;
@@ -190,7 +204,9 @@ export class Order extends BaseEntity {
     if (this._status !== OrderStatus.CREATED) {
       throw new Error('Cannot add items after order is sent to kitchen');
     }
-    const existingItem = this._items.find(i => i.menuItemId === item.menuItemId);
+    const existingItem = this._items.find(
+      (i) => i.menuItemId === item.menuItemId,
+    );
     if (existingItem) {
       existingItem.increaseQuantity(item.quantity);
     } else {
@@ -204,7 +220,7 @@ export class Order extends BaseEntity {
     if (this._status !== OrderStatus.CREATED) {
       throw new Error('Cannot remove items after order is sent to kitchen');
     }
-    this._items = this._items.filter(i => i.id !== itemId);
+    this._items = this._items.filter((i) => i.id !== itemId);
     this.touch();
   }
 
@@ -212,7 +228,7 @@ export class Order extends BaseEntity {
     if (this._status !== OrderStatus.CREATED) {
       throw new Error('Cannot modify items after order is sent to kitchen');
     }
-    const item = this._items.find(i => i.id === itemId);
+    const item = this._items.find((i) => i.id === itemId);
     if (item) {
       item.setQuantity(newQuantity);
       this.touch();
@@ -223,7 +239,7 @@ export class Order extends BaseEntity {
    * Get order item by ID
    */
   getItem(itemId: string): OrderItem | undefined {
-    return this._items.find(i => i.id === itemId);
+    return this._items.find((i) => i.id === itemId);
   }
 
   /**
@@ -232,7 +248,7 @@ export class Order extends BaseEntity {
   calculateSubtotal(): Decimal {
     return this._items.reduce(
       (sum, item) => sum.add(item.totalPrice),
-      new Decimal(0)
+      new Decimal(0),
     );
   }
 
@@ -310,7 +326,7 @@ export class Order extends BaseEntity {
    * Get estimated preparation time
    */
   getEstimatedPreparationTime(): number {
-    return Math.max(...this._items.map(item => item.preparationTime), 0);
+    return Math.max(...this._items.map((item) => item.preparationTime), 0);
   }
 
   /**
@@ -370,7 +386,7 @@ export class Order extends BaseEntity {
       data.table_id,
       data.waiter_id,
       data.status as OrderStatus,
-      data.created_at
+      data.created_at,
     );
   }
 }
@@ -394,7 +410,7 @@ export class OrderItem extends BaseEntity {
     quantity: number,
     price: number,
     createdAt?: Date,
-    updatedAt?: Date
+    updatedAt?: Date,
   ) {
     super(id, createdAt, updatedAt, true);
     this._orderId = orderId;
@@ -523,7 +539,7 @@ export class OrderItem extends BaseEntity {
       data.order_id,
       data.menu_item_id,
       data.quantity,
-      data.price
+      data.price,
     );
   }
 }

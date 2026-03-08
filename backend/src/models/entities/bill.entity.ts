@@ -28,7 +28,7 @@ export class Bill extends BaseEntity {
     serviceChargeRate: number = 5, // Default 5% service charge
     status: BillStatus = BillStatus.PENDING,
     createdAt?: Date,
-    updatedAt?: Date
+    updatedAt?: Date,
   ) {
     super(id, createdAt, updatedAt, true);
     this._orderId = orderId;
@@ -121,7 +121,9 @@ export class Bill extends BaseEntity {
    */
   private calculateTotals(): void {
     this._tax = this._subtotal.multiply(this._taxRate / 100);
-    this._serviceCharge = this._subtotal.multiply(this._serviceChargeRate / 100);
+    this._serviceCharge = this._subtotal.multiply(
+      this._serviceChargeRate / 100,
+    );
     this._totalAmount = this._subtotal.add(this._tax).add(this._serviceCharge);
   }
 
@@ -166,7 +168,7 @@ export class Bill extends BaseEntity {
   /**
    * Cancel bill
    */
-  cancel(reason: string): void {
+  cancel(_reason: string): void {
     if (this._status === BillStatus.PAID) {
       throw new Error('Cannot cancel paid bill');
     }
@@ -210,10 +212,12 @@ export class Bill extends BaseEntity {
    */
   getSummary(): string {
     const breakdown = this.getBreakdown();
-    return `Subtotal: $${breakdown.subtotal.toFixed(2)}, ` +
-           `Tax (${this._taxRate}%): $${breakdown.tax.toFixed(2)}, ` +
-           `Service Charge (${this._serviceChargeRate}%): $${breakdown.serviceCharge.toFixed(2)}, ` +
-           `Total: $${breakdown.total.toFixed(2)}`;
+    return (
+      `Subtotal: $${breakdown.subtotal.toFixed(2)}, ` +
+      `Tax (${this._taxRate}%): $${breakdown.tax.toFixed(2)}, ` +
+      `Service Charge (${this._serviceChargeRate}%): $${breakdown.serviceCharge.toFixed(2)}, ` +
+      `Total: $${breakdown.total.toFixed(2)}`
+    );
   }
 
   validate(): boolean {
@@ -269,7 +273,7 @@ export class Bill extends BaseEntity {
       undefined, // tax rate calculated
       undefined, // service charge rate calculated
       data.status as BillStatus,
-      data.created_at
+      data.created_at,
     );
     return bill;
   }
