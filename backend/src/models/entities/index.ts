@@ -11,4 +11,8 @@ export { InventoryItem, MenuItemIngredient } from './inventory-item.entity';
 export { Table } from './table.entity';
 export { Order, OrderItem } from './order.entity';
 export { Bill } from './bill.entity';
-export { Notification, NotificationType, NotificationFactory } from './notification.entity';
+export {
+  Notification,
+  NotificationType,
+  NotificationFactory,
+} from './notification.entity';
