@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { supabaseAdmin } from '../config/supabase';
+import { verifyToken } from '../utils/jwt';
 import { UserRole } from '../constants/roles';
 
 export interface AuthRequest extends Request {
@@ -12,48 +12,32 @@ export interface AuthRequest extends Request {
 }
 
 export function authenticate() {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) {
-        return res
-          .status(401)
-          .json({ message: 'Unauthorized: No token provided' });
+        return res.status(401).json({
+          status: 'error',
+          message: 'Unauthorized: No token provided',
+        });
       }
 
       const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (error || !user) {
-        return res.status(401).json({ message: 'Unauthorized: Invalid token' });
-      }
-
-      // Get user details from database
-      const { data: userData, error: dbError } = await supabaseAdmin
-        .from('User')
-        .select('id, email, role, restaurant_id')
-        .eq('id', user.id)
-        .single();
-
-      if (dbError || !userData) {
-        return res
-          .status(401)
-          .json({ message: 'Unauthorized: User not found' });
-      }
+      const payload = verifyToken(token);
 
       req.user = {
-        id: userData.id,
-        email: userData.email,
-        role: userData.role as UserRole,
-        restaurantId: userData.restaurant_id,
+        id: payload.userId,
+        email: payload.email,
+        role: payload.role as UserRole,
+        restaurantId: payload.restaurantId,
       };
 
       next();
-    } catch (error) {
-      return res.status(500).json({ message: error });
+    } catch {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Unauthorized: Invalid or expired token',
+      });
     }
   };
 }
