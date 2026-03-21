@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from '../../modules/auth/routes/auth.routes';
 import restaurantRoutes from '../../modules/restaurant/routes/restaurant.routes';
+import staffRoutes from '../../modules/staff/routes/staff.routes';
 
 const router = Router();
 
@@ -15,9 +16,10 @@ router.use('/auth', authRoutes);
 // Restaurant routes
 router.use('/restaurants', restaurantRoutes);
 
+// Staff routes
+router.use('/staff', staffRoutes);
+
 // TODO: Add other module routes
-// router.use('/staff', staffRoutes);
-// router.use('/staff', staffRoutes);
 // router.use('/menu', menuRoutes);
 // router.use('/inventory', inventoryRoutes);
 // router.use('/tables', tableRoutes);

@@ -4,9 +4,7 @@
  */
 
 import { supabaseAdmin } from '../../../shared/config/supabase';
-// import AuthRepository, {
-//   CreateUserData,
-// } from '../repositories/auth.repository';
+import AuthRepository from '../repositories/auth.repository';
 import {
   generateToken,
   verifyToken,
@@ -258,7 +256,7 @@ export class AuthService {
    */
   async changePassword(
     userId: string,
-    currentPassword: string,
+    _currentPassword: string,
     newPassword: string,
   ): Promise<void> {
     // Get user with password

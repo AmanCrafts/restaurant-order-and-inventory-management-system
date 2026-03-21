@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { asyncHandler } from '../../../shared/middleware/error-handler';
+import { UserRole } from '../../../shared/constants/roles';
 import {
   LoginRequestDto,
   RegisterRequestDto,
@@ -73,7 +74,7 @@ export class AuthController {
         email: dto.email,
         password: dto.password,
         name: dto.name,
-        role: dto.role,
+        role: dto.role as UserRole,
         restaurantId: dto.restaurantId,
       });
 

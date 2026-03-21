@@ -92,7 +92,8 @@ export class RestaurantService {
 
     // Validate phone number if provided
     if (data.contactNumber) {
-      const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
+      const phoneRegex =
+        /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
       if (!phoneRegex.test(data.contactNumber)) {
         throw new AppError('Invalid contact number format', 400);
       }

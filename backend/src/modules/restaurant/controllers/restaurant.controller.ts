@@ -12,9 +12,9 @@ import {
 } from '../../../models/dto/requests/restaurant.request.dto';
 import {
   RestaurantResponseDto,
-  RestaurantDetailResponseDto,
+  // RestaurantDetailResponseDto,
 } from '../../../models/dto/responses/restaurant.response.dto';
-import logger from '../../../shared/utils/logger';
+// import logger from '../../../shared/utils/logger';
 
 export class RestaurantController {
   private restaurantService: RestaurantService;
@@ -43,7 +43,7 @@ export class RestaurantController {
           usersCount: 0,
           menusCount: 0,
           tablesCount: 0,
-        })
+        }),
     );
 
     res.json({
@@ -57,7 +57,7 @@ export class RestaurantController {
    * GET /api/v1/restaurants/:id
    */
   getById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const details = await this.restaurantService.getDetails(id);
 
@@ -135,7 +135,7 @@ export class RestaurantController {
    * PUT /api/v1/restaurants/:id
    */
   update = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const dto = new UpdateRestaurantRequestDto(req.body);
 
     if (!dto.validate()) {
@@ -177,7 +177,7 @@ export class RestaurantController {
    * DELETE /api/v1/restaurants/:id
    */
   delete = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     await this.restaurantService.deactivate(id);
 
@@ -191,14 +191,16 @@ export class RestaurantController {
    * Get restaurant statistics
    * GET /api/v1/restaurants/stats
    */
-  getStats = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
-    const stats = await this.restaurantService.getStats();
+  getStats = asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
+      const stats = await this.restaurantService.getStats();
 
-    res.json({
-      status: 'success',
-      data: stats,
-    });
-  });
+      res.json({
+        status: 'success',
+        data: stats,
+      });
+    },
+  );
 }
 
 export default RestaurantController;
