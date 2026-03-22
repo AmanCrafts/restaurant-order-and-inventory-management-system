@@ -1,6 +1,7 @@
 import { BaseEntity } from './base.entity';
 import { Restaurant } from './restaurant.entity';
 import { MenuItem } from './menu.entity';
+import { Decimal } from '../../shared/utils/decimal';
 
 /**
  * Inventory Module Entities
@@ -223,22 +224,33 @@ export class InventoryItem extends BaseEntity {
     id: string;
     restaurant_id: string;
     name: string;
-    quantity: number;
+    quantity: number | { toNumber(): number };
     unit: string;
-    reorder_threshold: number;
-    is_active: boolean;
-    created_at: Date;
+    reorder_threshold: number | { toNumber(): number };
+    is_active?: boolean;
+    created_at?: Date;
+    updated_at?: Date;
   }): InventoryItem {
+    // Handle Decimal from Prisma
+    const quantity =
+      typeof data.quantity === 'number'
+        ? data.quantity
+        : data.quantity.toNumber();
+    const reorderThreshold =
+      typeof data.reorder_threshold === 'number'
+        ? data.reorder_threshold
+        : data.reorder_threshold.toNumber();
+
     return new InventoryItem(
       data.id,
       data.restaurant_id,
       data.name,
-      data.quantity,
+      quantity,
       data.unit,
-      data.reorder_threshold,
+      reorderThreshold,
       data.created_at,
-      undefined,
-      data.is_active,
+      data.updated_at,
+      data.is_active ?? true,
     );
   }
 }
@@ -355,26 +367,5 @@ export class MenuItemIngredient extends BaseEntity {
       quantityRequired: this._quantityRequired.toNumber(),
       hasSufficientStock: this.hasSufficientStock(),
     };
-  }
-}
-
-// Decimal class helper
-class Decimal {
-  private value: number;
-
-  constructor(value: number) {
-    this.value = Math.round(value * 100) / 100;
-  }
-
-  toNumber(): number {
-    return this.value;
-  }
-
-  add(other: Decimal): Decimal {
-    return new Decimal(this.value + other.value);
-  }
-
-  subtract(other: Decimal): Decimal {
-    return new Decimal(this.value - other.value);
   }
 }

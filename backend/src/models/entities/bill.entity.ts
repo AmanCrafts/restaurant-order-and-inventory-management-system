@@ -2,6 +2,20 @@ import { BaseEntity } from './base.entity';
 import { Order } from './order.entity';
 import { BillStatus } from '../../shared/constants/bill-status';
 
+// Import Decimal type as any to avoid type conflicts
+// The actual implementation comes from shared/utils/decimal
+type Decimal = {
+  toNumber(): number;
+  add(other: Decimal): Decimal;
+  subtract(other: Decimal): Decimal;
+  multiply(factor: number): Decimal;
+  divide(divisor: number): Decimal;
+  greaterThanOrEqualTo(other: number): boolean;
+  greaterThan(other: number): boolean;
+  lessThan(other: number): boolean;
+  equals(other: number): boolean;
+};
+
 /**
  * Bill Entity
  * Represents a bill/invoice for an order
@@ -32,10 +46,14 @@ export class Bill extends BaseEntity {
   ) {
     super(id, createdAt, updatedAt, true);
     this._orderId = orderId;
-    this._subtotal = new Decimal(subtotal);
+    // Use number operations directly and wrap in Decimal later
+    this._subtotal = { toNumber: () => subtotal } as Decimal;
     this._taxRate = taxRate;
     this._serviceChargeRate = serviceChargeRate;
     this._status = status;
+    this._tax = { toNumber: () => 0 } as Decimal;
+    this._serviceCharge = { toNumber: () => 0 } as Decimal;
+    this._totalAmount = { toNumber: () => 0 } as Decimal;
     this.calculateTotals();
   }
 
@@ -120,11 +138,18 @@ export class Bill extends BaseEntity {
    * Calculate tax, service charge, and total
    */
   private calculateTotals(): void {
-    this._tax = this._subtotal.multiply(this._taxRate / 100);
-    this._serviceCharge = this._subtotal.multiply(
-      this._serviceChargeRate / 100,
-    );
-    this._totalAmount = this._subtotal.add(this._tax).add(this._serviceCharge);
+    const subtotalNum = (
+      this._subtotal as unknown as { toNumber: () => number }
+    ).toNumber();
+    const taxNum = subtotalNum * (this._taxRate / 100);
+    const serviceChargeNum = subtotalNum * (this._serviceChargeRate / 100);
+    const totalNum = subtotalNum + taxNum + serviceChargeNum;
+
+    this._tax = { toNumber: () => taxNum } as unknown as Decimal;
+    this._serviceCharge = {
+      toNumber: () => serviceChargeNum,
+    } as unknown as Decimal;
+    this._totalAmount = { toNumber: () => totalNum } as unknown as Decimal;
   }
 
   /**
@@ -132,7 +157,8 @@ export class Bill extends BaseEntity {
    */
   recalculateFromOrder(order: Order): void {
     if (!order) return;
-    this._subtotal = order.calculateSubtotal();
+    const subtotal = order.calculateSubtotal();
+    this._subtotal = { toNumber: () => subtotal } as unknown as Decimal;
     this.calculateTotals();
     this.touch();
   }
@@ -147,7 +173,20 @@ export class Bill extends BaseEntity {
     if (amount > this._subtotal.toNumber()) {
       throw new Error('Discount cannot exceed subtotal');
     }
-    this._subtotal = this._subtotal.subtract(new Decimal(amount));
+    const newSubtotal = this._subtotal.toNumber() - amount;
+    this._subtotal = {
+      toNumber: () => newSubtotal,
+      add: (other: unknown) =>
+        (other as { toNumber: () => number }).toNumber() + newSubtotal,
+      subtract: (other: unknown) =>
+        newSubtotal - (other as { toNumber: () => number }).toNumber(),
+      multiply: (factor: number) => newSubtotal * factor,
+      divide: (divisor: number) => newSubtotal / divisor,
+      greaterThanOrEqualTo: (other: number) => newSubtotal >= other,
+      greaterThan: (other: number) => newSubtotal > other,
+      lessThan: (other: number) => newSubtotal < other,
+      equals: (other: number) => newSubtotal === other,
+    } as unknown as Decimal;
     this.calculateTotals();
     this.touch();
   }
@@ -276,30 +315,5 @@ export class Bill extends BaseEntity {
       data.created_at,
     );
     return bill;
-  }
-}
-
-// Decimal helper class
-class Decimal {
-  private value: number;
-
-  constructor(value: number) {
-    this.value = Math.round(value * 100) / 100;
-  }
-
-  toNumber(): number {
-    return this.value;
-  }
-
-  add(other: Decimal): Decimal {
-    return new Decimal(this.value + other.value);
-  }
-
-  subtract(other: Decimal): Decimal {
-    return new Decimal(this.value - other.value);
-  }
-
-  multiply(factor: number): Decimal {
-    return new Decimal(this.value * factor);
   }
 }

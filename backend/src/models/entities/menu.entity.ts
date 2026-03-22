@@ -5,6 +5,27 @@
 
 import { BaseEntity } from './base.entity';
 import { Restaurant } from './restaurant.entity';
+import { MenuItemIngredient } from './inventory-item.entity';
+
+// Define Decimal type locally to avoid import conflicts
+type Decimal = {
+  toNumber(): number;
+  add(other: Decimal): Decimal;
+  subtract(other: Decimal): Decimal;
+  multiply(factor: number): Decimal;
+  greaterThanOrEqualTo(other: number): boolean;
+};
+
+// Helper to create a Decimal-like object
+function createDecimal(value: number): Decimal {
+  return {
+    toNumber: () => value,
+    add: (other: Decimal) => createDecimal(value + other.toNumber()),
+    subtract: (other: Decimal) => createDecimal(value - other.toNumber()),
+    multiply: (factor: number) => createDecimal(value * factor),
+    greaterThanOrEqualTo: (other: number) => value >= other,
+  };
+}
 
 /**
  * Menu Entity
@@ -88,8 +109,8 @@ export class Menu extends BaseEntity {
    * Search items by name
    */
   searchItems(query: string): MenuItem[] {
-    return this.getAllItems().filter(
-      (item = item.name.toLowerCase().includes(query.toLowerCase())),
+    return this.getAllItems().filter((item) =>
+      item.name.toLowerCase().includes(query.toLowerCase()),
     );
   }
 
@@ -234,8 +255,6 @@ export class MenuCategory extends BaseEntity {
   }
 }
 
-import { MenuItemIngredient } from './inventory-item.entity';
-
 /**
  * MenuItem Entity
  * Represents an item in the menu
@@ -263,7 +282,7 @@ export class MenuItem extends BaseEntity {
     super(id, createdAt, updatedAt, isActive);
     this._categoryId = categoryId;
     this._name = name;
-    this._price = new Decimal(price);
+    this._price = createDecimal(price);
     this._isAvailable = isAvailable;
     this._preparationTime = preparationTime;
   }
@@ -317,7 +336,7 @@ export class MenuItem extends BaseEntity {
     if (value < 0) {
       throw new Error('Price cannot be negative');
     }
-    this._price = new Decimal(value);
+    this._price = createDecimal(value);
     this.touch();
   }
 
@@ -370,7 +389,7 @@ export class MenuItem extends BaseEntity {
   getIngredientCost(): Decimal {
     return this._ingredients.reduce(
       (sum, ing) => sum.add(ing.cost),
-      new Decimal(0),
+      createDecimal(0),
     );
   }
 
@@ -404,46 +423,19 @@ export class MenuItem extends BaseEntity {
     id: string;
     category_id: string;
     name: string;
-    price: Decimal;
+    price: number | { toNumber(): number };
     is_available: boolean;
     preparation_time: number;
   }): MenuItem {
+    const priceNum =
+      typeof data.price === 'number' ? data.price : data.price.toNumber();
     return new MenuItem(
       data.id,
       data.category_id,
       data.name,
-      data.price.toNumber(),
+      priceNum,
       data.is_available,
       data.preparation_time,
     );
-  }
-}
-
-// Decimal class for financial calculations
-class Decimal {
-  private value: number;
-
-  constructor(value: number) {
-    this.value = Math.round(value * 100) / 100; // Keep 2 decimal places
-  }
-
-  toNumber(): number {
-    return this.value;
-  }
-
-  add(other: Decimal): Decimal {
-    return new Decimal(this.value + other.value);
-  }
-
-  subtract(other: Decimal): Decimal {
-    return new Decimal(this.value - other.value);
-  }
-
-  multiply(factor: number): Decimal {
-    return new Decimal(this.value * factor);
-  }
-
-  greaterThanOrEqualTo(other: number): boolean {
-    return this.value >= other;
   }
 }

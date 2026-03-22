@@ -16,12 +16,12 @@ export abstract class BaseResponseDto {
   constructor(entity: {
     id: string;
     createdAt: Date;
-    updatedAt: Date;
+    updatedAt?: Date;
     isActive?: boolean;
   }) {
     this.id = entity.id;
     this.createdAt = entity.createdAt;
-    this.updatedAt = entity.updatedAt;
+    this.updatedAt = entity.updatedAt ?? entity.createdAt;
     this.isActive = entity.isActive ?? true;
   }
 }
