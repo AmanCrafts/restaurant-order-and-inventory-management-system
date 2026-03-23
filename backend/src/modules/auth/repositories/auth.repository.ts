@@ -127,7 +127,7 @@ export class AuthRepository {
   async updateLastLogin(id: string): Promise<void> {
     await prisma.user.update({
       where: { id },
-      data: { updated_at: new Date() },
+      data: {},
     });
   }
 

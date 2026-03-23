@@ -28,85 +28,81 @@ export class StaffController {
    * Get all staff members
    * GET /api/v1/staff
    */
-  getAll = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const restaurantId = req.query.restaurantId as string;
-      const role = req.query.role as UserRole;
-      const isActive = req.query.isActive as string | undefined;
-      const search = req.query.search as string;
+  getAll = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const restaurantId = req.query.restaurantId as string;
+    const role = req.query.role as UserRole;
+    const isActive = req.query.isActive as string | undefined;
+    const search = req.query.search as string;
 
-      const filter: {
-        restaurantId?: string;
-        role?: UserRole;
-        isActive?: boolean;
-        search?: string;
-      } = {};
+    const filter: {
+      restaurantId?: string;
+      role?: UserRole;
+      isActive?: boolean;
+      search?: string;
+    } = {};
 
-      if (restaurantId) filter.restaurantId = restaurantId;
-      if (role) filter.role = role;
-      if (isActive !== undefined) {
-        filter.isActive = isActive === 'true';
-      }
-      if (search) filter.search = search;
-
-      const staff = await this.staffService.getAll(
-        Object.keys(filter).length > 0 ? filter : undefined
-      );
-
-      const response = staff.map(
-        (s) =>
-          new UserSummaryResponseDto({
-            id: s.id,
-            name: s.name,
-            email: s.email,
-            role: s.role,
-            isActive: s.isActive,
-          })
-      );
-
-      res.json({
-        status: 'success',
-        data: response,
-      });
+    if (restaurantId) filter.restaurantId = restaurantId;
+    if (role) filter.role = role;
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
     }
-  );
+    if (search) filter.search = search;
+
+    const staff = await this.staffService.getAll(
+      Object.keys(filter).length > 0 ? filter : undefined,
+    );
+
+    const response = staff.map(
+      (s) =>
+        new UserSummaryResponseDto({
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          role: s.role,
+          isActive: s.isActive,
+        }),
+    );
+
+    res.json({
+      status: 'success',
+      data: response,
+    });
+  });
 
   /**
    * Get staff member by ID
    * GET /api/v1/staff/:id
    */
-  getById = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const id = req.params.id as string;
+  getById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const id = req.params.id as string;
 
-      const result = await this.staffService.getByIdWithRestaurant(id);
-      const { user, restaurant } = result;
+    const result = await this.staffService.getByIdWithRestaurant(id);
+    const { user, restaurant } = result;
 
-      const response = new UserResponseDto({
-        id: user.id,
-        restaurantId: user.restaurantId,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        ordersCount: user.orders.length,
-      });
+    const response = new UserResponseDto({
+      id: user.id,
+      restaurantId: user.restaurantId,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      ordersCount: user.orders.length,
+    });
 
-      res.json({
-        status: 'success',
-        data: {
-          ...response,
-          restaurant: {
-            id: restaurant.id,
-            name: restaurant.name,
-            address: restaurant.address,
-          },
+    res.json({
+      status: 'success',
+      data: {
+        ...response,
+        restaurant: {
+          id: restaurant.id,
+          name: restaurant.name,
+          address: restaurant.address,
         },
-      });
-    }
-  );
+      },
+    });
+  });
 
   /**
    * Get staff members by restaurant ID
@@ -130,14 +126,14 @@ export class StaffController {
             createdAt: s.createdAt,
             updatedAt: s.updatedAt,
             ordersCount: s.orders.length,
-          })
+          }),
       );
 
       res.json({
         status: 'success',
         data: response,
       });
-    }
+    },
   );
 
   /**
@@ -173,7 +169,7 @@ export class StaffController {
           password: dto.password,
           role: dto.role as UserRole,
         },
-        adminId
+        adminId,
       );
 
       const response = new UserResponseDto({
@@ -192,7 +188,7 @@ export class StaffController {
         status: 'success',
         data: response,
       });
-    }
+    },
   );
 
   /**
@@ -229,7 +225,7 @@ export class StaffController {
           role: dto.role as UserRole,
           isActive: dto.isActive,
         },
-        adminId
+        adminId,
       );
 
       const response = new UserResponseDto({
@@ -248,7 +244,7 @@ export class StaffController {
         status: 'success',
         data: response,
       });
-    }
+    },
   );
 
   /**
@@ -283,7 +279,7 @@ export class StaffController {
         status: 'success',
         message: 'Password updated successfully',
       });
-    }
+    },
   );
 
   /**
@@ -309,7 +305,7 @@ export class StaffController {
         status: 'success',
         message: 'Staff member deactivated successfully',
       });
-    }
+    },
   );
 
   /**
@@ -347,7 +343,7 @@ export class StaffController {
         status: 'success',
         data: response,
       });
-    }
+    },
   );
 
   /**
@@ -373,7 +369,7 @@ export class StaffController {
         status: 'success',
         message: 'Staff member deleted permanently',
       });
-    }
+    },
   );
 
   /**
@@ -390,52 +386,50 @@ export class StaffController {
         status: 'success',
         data: stats,
       });
-    }
+    },
   );
 
   /**
    * Search staff members
    * GET /api/v1/staff/search
    */
-  search = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const restaurantId = req.query.restaurantId as string;
-      const query = req.query.q as string;
-      const role = req.query.role as UserRole;
-      const isActive = req.query.isActive as string | undefined;
+  search = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const restaurantId = req.query.restaurantId as string;
+    const query = req.query.q as string;
+    const role = req.query.role as UserRole;
+    const isActive = req.query.isActive as string | undefined;
 
-      if (!restaurantId) {
-        res.status(400).json({
-          status: 'error',
-          message: 'restaurantId is required',
-        });
-        return;
-      }
-
-      const staff = await this.staffService.search({
-        restaurantId,
-        query,
-        role,
-        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    if (!restaurantId) {
+      res.status(400).json({
+        status: 'error',
+        message: 'restaurantId is required',
       });
-
-      const response = staff.map(
-        (s) =>
-          new UserSummaryResponseDto({
-            id: s.id,
-            name: s.name,
-            email: s.email,
-            role: s.role,
-            isActive: s.isActive,
-          })
-      );
-
-      res.json({
-        status: 'success',
-        data: response,
-      });
+      return;
     }
-  );
+
+    const staff = await this.staffService.search({
+      restaurantId,
+      query,
+      role,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    });
+
+    const response = staff.map(
+      (s) =>
+        new UserSummaryResponseDto({
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          role: s.role,
+          isActive: s.isActive,
+        }),
+    );
+
+    res.json({
+      status: 'success',
+      data: response,
+    });
+  });
 }
 
 export default StaffController;

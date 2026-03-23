@@ -4,15 +4,15 @@
  */
 
 import StaffRepository, {
-  CreateStaffData,
-  UpdateStaffData,
+  // CreateStaffData,
+  // UpdateStaffData,
   StaffFilter,
 } from '../repositories/staff.repository';
 import RestaurantRepository from '../../restaurant/repositories/restaurant.repository';
 import { User } from '../../../models/entities/user.entity';
 import { UserRole } from '../../../shared/constants/roles';
 import { AppError } from '../../../shared/middleware/error-handler';
-import { hashPassword, comparePassword } from '../../../shared/utils/password';
+import { hashPassword } from '../../../shared/utils/password';
 import { supabaseAdmin } from '../../../shared/config/supabase';
 import logger from '../../../shared/utils/logger';
 
@@ -106,11 +106,11 @@ export class StaffService {
    */
   async create(
     data: CreateStaffInput,
-    createdByAdminId: string
+    createdByAdminId: string,
   ): Promise<User> {
     // Verify restaurant exists
     const restaurant = await this.restaurantRepository.findById(
-      data.restaurantId
+      data.restaurantId,
     );
 
     if (!restaurant) {
@@ -161,7 +161,6 @@ export class StaffService {
     try {
       // Create user in database
       const staff = await this.staffRepository.create({
-        id: authData.user.id,
         restaurantId: data.restaurantId,
         name: data.name,
         email: data.email,
@@ -171,7 +170,7 @@ export class StaffService {
       });
 
       logger.info(
-        `Staff member created: ${staff.name} (${staff.id}) by admin ${createdByAdminId}`
+        `Staff member created: ${staff.name} (${staff.id}) by admin ${createdByAdminId}`,
       );
 
       return staff;
@@ -188,7 +187,7 @@ export class StaffService {
   async update(
     id: string,
     data: UpdateStaffInput,
-    updatedById: string
+    updatedById: string,
   ): Promise<User> {
     // Check if staff member exists
     const existing = await this.staffRepository.findById(id);
@@ -201,7 +200,7 @@ export class StaffService {
     if (data.email && data.email.toLowerCase() !== existing.email) {
       const emailExists = await this.staffRepository.emailExists(
         data.email,
-        id
+        id,
       );
       if (emailExists) {
         throw new AppError('Email already registered', 409);
@@ -231,7 +230,7 @@ export class StaffService {
     }
 
     logger.info(
-      `Staff member updated: ${staff.name} (${staff.id}) by admin ${updatedById}`
+      `Staff member updated: ${staff.name} (${staff.id}) by admin ${updatedById}`,
     );
 
     return staff;
@@ -243,7 +242,7 @@ export class StaffService {
   async updatePassword(
     id: string,
     newPassword: string,
-    updatedById: string
+    updatedById: string,
   ): Promise<void> {
     // Check if staff member exists
     const existing = await this.staffRepository.findById(id);
@@ -262,7 +261,9 @@ export class StaffService {
 
     await this.staffRepository.updatePassword(id, hashedPassword);
 
-    logger.info(`Staff password updated: ${existing.name} (${id})`);
+    logger.info(
+      `Staff password updated: ${existing.name} (${id}) by admin ${updatedById}`,
+    );
   }
 
   /**
@@ -282,7 +283,7 @@ export class StaffService {
     await this.staffRepository.softDelete(id);
 
     logger.info(
-      `Staff member deactivated: ${existing.name} (${id}) by admin ${deactivatedById}`
+      `Staff member deactivated: ${existing.name} (${id}) by admin ${deactivatedById}`,
     );
   }
 
@@ -307,7 +308,7 @@ export class StaffService {
     }
 
     logger.info(
-      `Staff member activated: ${staff.name} (${id}) by admin ${activatedById}`
+      `Staff member activated: ${staff.name} (${id}) by admin ${activatedById}`,
     );
 
     return staff;
@@ -326,7 +327,7 @@ export class StaffService {
     await this.staffRepository.hardDelete(id);
 
     logger.info(
-      `Staff member deleted: ${existing.name} (${id}) by admin ${deletedById}`
+      `Staff member deleted: ${existing.name} (${id}) by admin ${deletedById}`,
     );
   }
 
