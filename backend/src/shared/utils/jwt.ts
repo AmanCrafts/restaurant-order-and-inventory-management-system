@@ -9,11 +9,19 @@ export interface TokenPayload {
 }
 
 export function generateToken(payload: TokenPayload): string {
-  return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
+  const secret = config.jwt.secret;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+  return jwt.sign(payload, secret, {
+    expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
   });
 }
 
 export function verifyToken(token: string): TokenPayload {
-  return jwt.verify(token, config.jwt.secret) as TokenPayload;
+  const secret = config.jwt.secret;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+  return jwt.verify(token, secret) as TokenPayload;
 }

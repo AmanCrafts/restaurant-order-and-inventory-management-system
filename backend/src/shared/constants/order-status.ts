@@ -8,7 +8,7 @@ export enum OrderStatus {
   CLOSED = 'CLOSED',
 }
 
-export const OrderStatusFlow = {
+export const OrderStatusFlow: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.CREATED]: [OrderStatus.SENT_TO_KITCHEN],
   [OrderStatus.SENT_TO_KITCHEN]: [OrderStatus.COOKING],
   [OrderStatus.COOKING]: [OrderStatus.READY],
