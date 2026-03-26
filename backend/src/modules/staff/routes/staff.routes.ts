@@ -64,7 +64,7 @@ router.get(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(staffListQuerySchema, undefined),
-  staffController.getAll
+  staffController.getAll,
 );
 
 router.get(
@@ -72,7 +72,7 @@ router.get(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(searchQuerySchema, undefined),
-  staffController.search
+  staffController.search,
 );
 
 router.get(
@@ -80,7 +80,7 @@ router.get(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, restaurantIdSchema),
-  staffController.getStats
+  staffController.getStats,
 );
 
 router.get(
@@ -88,7 +88,7 @@ router.get(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, restaurantIdSchema),
-  staffController.getByRestaurant
+  staffController.getByRestaurant,
 );
 
 router.get(
@@ -96,7 +96,7 @@ router.get(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, staffIdSchema),
-  staffController.getById
+  staffController.getById,
 );
 
 router.post(
@@ -104,7 +104,7 @@ router.post(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(createStaffSchema),
-  staffController.create
+  staffController.create,
 );
 
 router.put(
@@ -112,7 +112,7 @@ router.put(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(updateStaffSchema, staffIdSchema),
-  staffController.update
+  staffController.update,
 );
 
 router.put(
@@ -120,7 +120,7 @@ router.put(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(updatePasswordSchema, staffIdSchema),
-  staffController.updatePassword
+  staffController.updatePassword,
 );
 
 router.patch(
@@ -128,7 +128,7 @@ router.patch(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, staffIdSchema),
-  staffController.activate
+  staffController.activate,
 );
 
 router.delete(
@@ -136,7 +136,7 @@ router.delete(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, staffIdSchema),
-  staffController.deactivate
+  staffController.deactivate,
 );
 
 router.delete(
@@ -144,7 +144,7 @@ router.delete(
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, staffIdSchema),
-  staffController.delete
+  staffController.delete,
 );
 
 export default router;
