@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import { UserRole } from '../constants/roles';
+import { AppError } from './error-handler';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -9,6 +10,21 @@ export interface AuthRequest extends Request {
     role: UserRole;
     restaurantId: string;
   };
+}
+
+export type AuthenticatedUser = NonNullable<AuthRequest['user']>;
+
+export function assertRestaurantAccess(
+  user: AuthenticatedUser,
+  restaurantId?: string,
+): void {
+  if (!restaurantId) {
+    return;
+  }
+
+  if (user.restaurantId !== restaurantId) {
+    throw new AppError('Forbidden: Access denied for this restaurant', 403);
+  }
 }
 
 export function authenticate() {
@@ -42,6 +58,29 @@ export function authenticate() {
   };
 }
 
+export function authenticateOptional() {
+  return (req: AuthRequest, _res: Response, next: NextFunction) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const payload = verifyToken(token);
+
+        req.user = {
+          id: payload.userId,
+          email: payload.email,
+          role: payload.role as UserRole,
+          restaurantId: payload.restaurantId,
+        };
+      }
+    } catch {
+      req.user = undefined;
+    }
+
+    next();
+  };
+}
+
 export function authorize(allowedRoles: UserRole[]) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -60,20 +99,20 @@ export function authorize(allowedRoles: UserRole[]) {
 
 export function requireRestaurantAccess() {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    const restaurantId = req.params.restaurantId || req.body.restaurantId;
+    const restaurantId =
+      req.params.restaurantId ||
+      req.params.id ||
+      req.body.restaurantId ||
+      (req.query.restaurantId as string | undefined);
 
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Admin can access any restaurant
-    if (req.user.role === UserRole.ADMIN) {
-      return next();
-    }
-
-    // Others can only access their own restaurant
-    if (restaurantId && restaurantId !== req.user.restaurantId) {
-      return res.status(403).json({ message: 'Forbidden: Access denied' });
+    try {
+      assertRestaurantAccess(req.user, restaurantId);
+    } catch (error) {
+      return next(error);
     }
 
     next();

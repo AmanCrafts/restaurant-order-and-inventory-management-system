@@ -9,20 +9,23 @@ export function validateRequest(
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
       if (bodySchema) {
-        bodySchema.parse(req.body);
+        req.body = bodySchema.parse(req.body);
       }
       if (paramsSchema) {
-        paramsSchema.parse(req.params);
+        req.params = paramsSchema.parse(req.params);
       }
       if (querySchema) {
-        querySchema.parse(req.query);
+        req.query = querySchema.parse(req.query) as Request['query'];
       }
       next();
     } catch (error) {
       res.status(400).json({
         status: 'error',
         message: 'Validation failed',
-        errors: error,
+        details:
+          typeof error === 'object' && error && 'flatten' in error
+            ? (error as { flatten(): unknown }).flatten()
+            : error,
       });
     }
   };

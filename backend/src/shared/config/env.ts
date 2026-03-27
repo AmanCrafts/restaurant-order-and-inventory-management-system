@@ -22,16 +22,19 @@ export const config = {
 };
 
 export function validateEnv(): void {
-  const required = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'];
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
   const missing = required.filter(
-    (key) => !process.env[key] || process.env[key]?.startsWith('your_'),
+    (key) =>
+      !process.env[key] ||
+      process.env[key]?.startsWith('your_') ||
+      process.env[key] === 'your-secret-key',
   );
 
   if (missing.length > 0) {
     console.warn('⚠️  Missing required environment variables:');
     missing.forEach((key) => console.warn(`   - ${key}`));
     console.warn(
-      '\nPlease update your .env file with valid values from your Supabase project.\n',
+      '\nPlease update your .env file with valid backend configuration values.\n',
     );
   }
 }
