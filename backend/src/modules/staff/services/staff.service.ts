@@ -1,20 +1,16 @@
-/**
- * Staff Service
- * Business logic for staff management
- */
-
 import StaffRepository, {
-  // CreateStaffData,
-  // UpdateStaffData,
   StaffFilter,
+  StaffRecord,
 } from '../repositories/staff.repository';
 import RestaurantRepository from '../../restaurant/repositories/restaurant.repository';
-import { User } from '../../../models/entities/user.entity';
 import { UserRole } from '../../../shared/constants/roles';
 import { AppError } from '../../../shared/middleware/error-handler';
 import { hashPassword } from '../../../shared/utils/password';
-import { supabaseAdmin } from '../../../shared/config/supabase';
 import logger from '../../../shared/utils/logger';
+import {
+  AuthenticatedUser,
+  assertRestaurantAccess,
+} from '../../../shared/middleware/auth';
 
 export interface CreateStaffInput {
   restaurantId: string;
@@ -47,53 +43,61 @@ export class StaffService {
     this.restaurantRepository = new RestaurantRepository();
   }
 
-  /**
-   * Get all staff members
-   */
-  async getAll(filter?: StaffSearchInput): Promise<User[]> {
-    return this.staffRepository.findAll(filter);
-  }
-
-  /**
-   * Get staff member by ID
-   */
-  async getById(id: string): Promise<User> {
-    const staff = await this.staffRepository.findById(id);
-
-    if (!staff) {
-      throw new AppError('Staff member not found', 404);
+  private ensureAdmin(actor: AuthenticatedUser): void {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new AppError('Only admins can manage staff', 403);
     }
-
-    return staff;
   }
 
-  /**
-   * Get staff member by ID with restaurant details
-   */
-  async getByIdWithRestaurant(id: string): Promise<{
-    user: User;
+  async getAll(
+    actor: AuthenticatedUser,
+    filter?: StaffSearchInput,
+  ): Promise<StaffRecord[]> {
+    this.ensureAdmin(actor);
+
+    const restaurantId = filter?.restaurantId || actor.restaurantId;
+    assertRestaurantAccess(actor, restaurantId);
+
+    return this.staffRepository.findAll({
+      restaurantId,
+      role: filter?.role,
+      isActive: filter?.isActive,
+      search: filter?.search,
+    });
+  }
+
+  async getByIdWithRestaurant(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<{
+    user: StaffRecord;
     restaurant: {
       id: string;
       name: string;
       address: string;
     };
   }> {
+    this.ensureAdmin(actor);
+
     const result = await this.staffRepository.findByIdWithRestaurant(id);
 
     if (!result) {
       throw new AppError('Staff member not found', 404);
     }
 
+    assertRestaurantAccess(actor, result.user.restaurantId);
+
     return result;
   }
 
-  /**
-   * Get all staff members by restaurant ID
-   */
-  async getByRestaurantId(restaurantId: string): Promise<User[]> {
-    // Verify restaurant exists
-    const restaurant = await this.restaurantRepository.findById(restaurantId);
+  async getByRestaurantId(
+    restaurantId: string,
+    actor: AuthenticatedUser,
+  ): Promise<StaffRecord[]> {
+    this.ensureAdmin(actor);
+    assertRestaurantAccess(actor, restaurantId);
 
+    const restaurant = await this.restaurantRepository.findById(restaurantId);
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
     }
@@ -101,126 +105,103 @@ export class StaffService {
     return this.staffRepository.findByRestaurantId(restaurantId);
   }
 
-  /**
-   * Create new staff member
-   */
   async create(
     data: CreateStaffInput,
-    createdByAdminId: string,
-  ): Promise<User> {
-    // Verify restaurant exists
+    actor: AuthenticatedUser,
+  ): Promise<StaffRecord> {
+    this.ensureAdmin(actor);
+    assertRestaurantAccess(actor, data.restaurantId);
+
     const restaurant = await this.restaurantRepository.findById(
       data.restaurantId,
     );
-
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
     }
 
-    // Check if email already exists
-    const emailExists = await this.staffRepository.emailExists(data.email);
-    if (emailExists) {
+    if (await this.staffRepository.emailExists(data.email)) {
       throw new AppError('Email already registered', 409);
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
       throw new AppError('Invalid email format', 400);
     }
 
-    // Validate password strength
     if (data.password.length < 6) {
       throw new AppError('Password must be at least 6 characters', 400);
     }
 
-    // Validate name
     if (data.name.trim().length < 2) {
       throw new AppError('Name must be at least 2 characters', 400);
     }
 
-    // Hash password
     const hashedPassword = await hashPassword(data.password);
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
+    const staff = await this.staffRepository.create({
+      restaurantId: data.restaurantId,
+      name: data.name.trim(),
+      email: data.email.toLowerCase(),
+      passwordHash: hashedPassword,
+      role: data.role,
+      isActive: true,
+    });
 
-    if (authError) {
-      logger.error('Supabase auth error:', authError);
-      throw new AppError(authError.message, 400);
-    }
+    logger.info(
+      `Staff member created: ${staff.name} (${staff.id}) by admin ${actor.id}`,
+    );
 
-    if (!authData.user) {
-      throw new AppError('Failed to create user', 500);
-    }
-
-    try {
-      // Create user in database
-      const staff = await this.staffRepository.create({
-        restaurantId: data.restaurantId,
-        name: data.name,
-        email: data.email,
-        passwordHash: hashedPassword,
-        role: data.role,
-        isActive: true,
-      });
-
-      logger.info(
-        `Staff member created: ${staff.name} (${staff.id}) by admin ${createdByAdminId}`,
-      );
-
-      return staff;
-    } catch (error) {
-      // Cleanup Supabase user if database creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      throw error;
-    }
+    return staff;
   }
 
-  /**
-   * Update staff member
-   */
   async update(
     id: string,
     data: UpdateStaffInput,
-    updatedById: string,
-  ): Promise<User> {
-    // Check if staff member exists
-    const existing = await this.staffRepository.findById(id);
+    actor: AuthenticatedUser,
+  ): Promise<StaffRecord> {
+    this.ensureAdmin(actor);
 
+    const existing = await this.staffRepository.findById(id);
     if (!existing) {
       throw new AppError('Staff member not found', 404);
     }
 
-    // Check if email is being changed and if it already exists
+    assertRestaurantAccess(actor, existing.restaurantId);
+
     if (data.email && data.email.toLowerCase() !== existing.email) {
-      const emailExists = await this.staffRepository.emailExists(
-        data.email,
-        id,
-      );
-      if (emailExists) {
+      if (await this.staffRepository.emailExists(data.email, id)) {
         throw new AppError('Email already registered', 409);
       }
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
         throw new AppError('Invalid email format', 400);
       }
     }
 
-    // Validate name if provided
     if (data.name && data.name.trim().length < 2) {
       throw new AppError('Name must be at least 2 characters', 400);
     }
 
+    if (
+      existing.role === UserRole.ADMIN &&
+      data.isActive === false &&
+      existing.isActive
+    ) {
+      const remainingAdmins = await this.staffRepository.countActiveAdmins(
+        existing.restaurantId,
+        existing.id,
+      );
+
+      if (remainingAdmins === 0) {
+        throw new AppError(
+          'At least one active admin must remain for the restaurant',
+          400,
+        );
+      }
+    }
+
     const staff = await this.staffRepository.update(id, {
-      name: data.name,
-      email: data.email,
+      name: data.name?.trim(),
+      email: data.email?.toLowerCase(),
       role: data.role,
       isActive: data.isActive,
     });
@@ -230,48 +211,42 @@ export class StaffService {
     }
 
     logger.info(
-      `Staff member updated: ${staff.name} (${staff.id}) by admin ${updatedById}`,
+      `Staff member updated: ${staff.name} (${staff.id}) by admin ${actor.id}`,
     );
 
     return staff;
   }
 
-  /**
-   * Update staff member's password
-   */
   async updatePassword(
     id: string,
     newPassword: string,
-    updatedById: string,
+    actor: AuthenticatedUser,
   ): Promise<void> {
-    // Check if staff member exists
-    const existing = await this.staffRepository.findById(id);
+    this.ensureAdmin(actor);
 
+    const existing = await this.staffRepository.findById(id);
     if (!existing) {
       throw new AppError('Staff member not found', 404);
     }
 
-    // Validate password strength
+    assertRestaurantAccess(actor, existing.restaurantId);
+
     if (newPassword.length < 6) {
       throw new AppError('Password must be at least 6 characters', 400);
     }
 
-    // Hash new password
     const hashedPassword = await hashPassword(newPassword);
-
     await this.staffRepository.updatePassword(id, hashedPassword);
 
     logger.info(
-      `Staff password updated: ${existing.name} (${id}) by admin ${updatedById}`,
+      `Staff password updated: ${existing.name} (${id}) by admin ${actor.id}`,
     );
   }
 
-  /**
-   * Deactivate staff member
-   */
-  async deactivate(id: string, deactivatedById: string): Promise<void> {
-    const existing = await this.staffRepository.findById(id);
+  async deactivate(id: string, actor: AuthenticatedUser): Promise<void> {
+    this.ensureAdmin(actor);
 
+    const existing = await this.staffRepository.findById(id);
     if (!existing) {
       throw new AppError('Staff member not found', 404);
     }
@@ -280,19 +255,33 @@ export class StaffService {
       throw new AppError('Staff member is already deactivated', 400);
     }
 
+    assertRestaurantAccess(actor, existing.restaurantId);
+
+    if (existing.role === UserRole.ADMIN) {
+      const remainingAdmins = await this.staffRepository.countActiveAdmins(
+        existing.restaurantId,
+        existing.id,
+      );
+
+      if (remainingAdmins === 0) {
+        throw new AppError(
+          'At least one active admin must remain for the restaurant',
+          400,
+        );
+      }
+    }
+
     await this.staffRepository.softDelete(id);
 
     logger.info(
-      `Staff member deactivated: ${existing.name} (${id}) by admin ${deactivatedById}`,
+      `Staff member deactivated: ${existing.name} (${id}) by admin ${actor.id}`,
     );
   }
 
-  /**
-   * Activate staff member
-   */
-  async activate(id: string, activatedById: string): Promise<User> {
-    const existing = await this.staffRepository.findById(id);
+  async activate(id: string, actor: AuthenticatedUser): Promise<StaffRecord> {
+    this.ensureAdmin(actor);
 
+    const existing = await this.staffRepository.findById(id);
     if (!existing) {
       throw new AppError('Staff member not found', 404);
     }
@@ -301,48 +290,64 @@ export class StaffService {
       throw new AppError('Staff member is already active', 400);
     }
 
-    const staff = await this.staffRepository.update(id, { isActive: true });
+    assertRestaurantAccess(actor, existing.restaurantId);
 
+    const staff = await this.staffRepository.update(id, { isActive: true });
     if (!staff) {
       throw new AppError('Failed to activate staff member', 500);
     }
 
     logger.info(
-      `Staff member activated: ${staff.name} (${id}) by admin ${activatedById}`,
+      `Staff member activated: ${staff.name} (${id}) by admin ${actor.id}`,
     );
 
     return staff;
   }
 
-  /**
-   * Delete staff member permanently (hard delete)
-   */
-  async delete(id: string, deletedById: string): Promise<void> {
-    const existing = await this.staffRepository.findById(id);
+  async delete(id: string, actor: AuthenticatedUser): Promise<void> {
+    this.ensureAdmin(actor);
 
+    const existing = await this.staffRepository.findById(id);
     if (!existing) {
       throw new AppError('Staff member not found', 404);
+    }
+
+    assertRestaurantAccess(actor, existing.restaurantId);
+
+    if (existing.role === UserRole.ADMIN) {
+      const remainingAdmins = await this.staffRepository.countActiveAdmins(
+        existing.restaurantId,
+        existing.id,
+      );
+
+      if (remainingAdmins === 0) {
+        throw new AppError(
+          'At least one active admin must remain for the restaurant',
+          400,
+        );
+      }
     }
 
     await this.staffRepository.hardDelete(id);
 
     logger.info(
-      `Staff member deleted: ${existing.name} (${id}) by admin ${deletedById}`,
+      `Staff member deleted: ${existing.name} (${id}) by admin ${actor.id}`,
     );
   }
 
-  /**
-   * Get staff statistics for a restaurant
-   */
-  async getStats(restaurantId: string): Promise<{
+  async getStats(
+    restaurantId: string,
+    actor: AuthenticatedUser,
+  ): Promise<{
     total: number;
     active: number;
     inactive: number;
     byRole: Record<string, number>;
   }> {
-    // Verify restaurant exists
-    const restaurant = await this.restaurantRepository.findById(restaurantId);
+    this.ensureAdmin(actor);
+    assertRestaurantAccess(actor, restaurantId);
 
+    const restaurant = await this.restaurantRepository.findById(restaurantId);
     if (!restaurant) {
       throw new AppError('Restaurant not found', 404);
     }
@@ -350,30 +355,22 @@ export class StaffService {
     return this.staffRepository.getStats(restaurantId);
   }
 
-  /**
-   * Search staff members
-   */
   async search(params: {
     restaurantId: string;
     query?: string;
     role?: UserRole;
     isActive?: boolean;
-  }): Promise<User[]> {
+    actor: AuthenticatedUser;
+  }): Promise<StaffRecord[]> {
+    this.ensureAdmin(params.actor);
+    assertRestaurantAccess(params.actor, params.restaurantId);
+
     const filter: StaffFilter = {
       restaurantId: params.restaurantId,
+      role: params.role,
+      isActive: params.isActive,
+      search: params.query,
     };
-
-    if (params.query) {
-      filter.search = params.query;
-    }
-
-    if (params.role) {
-      filter.role = params.role;
-    }
-
-    if (params.isActive !== undefined) {
-      filter.isActive = params.isActive;
-    }
 
     return this.staffRepository.findAll(filter);
   }

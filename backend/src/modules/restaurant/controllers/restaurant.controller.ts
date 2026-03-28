@@ -1,20 +1,7 @@
-/**
- * Restaurant Controller
- * Handles HTTP requests for restaurant management
- */
-
 import { Request, Response } from 'express';
 import { RestaurantService } from '../services/restaurant.service';
 import { asyncHandler } from '../../../shared/middleware/error-handler';
-import {
-  CreateRestaurantRequestDto,
-  UpdateRestaurantRequestDto,
-} from '../../../models/dto/requests/restaurant.request.dto';
-import {
-  RestaurantResponseDto,
-  // RestaurantDetailResponseDto,
-} from '../../../models/dto/responses/restaurant.response.dto';
-// import logger from '../../../shared/utils/logger';
+import { AuthRequest } from '../../../shared/middleware/auth';
 
 export class RestaurantController {
   private restaurantService: RestaurantService;
@@ -23,174 +10,89 @@ export class RestaurantController {
     this.restaurantService = new RestaurantService();
   }
 
-  /**
-   * Get all restaurants
-   * GET /api/v1/restaurants
-   */
   getAll = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
     const restaurants = await this.restaurantService.getAll();
 
-    const response = restaurants.map(
-      (r) =>
-        new RestaurantResponseDto({
-          id: r.id,
-          name: r.name,
-          address: r.address,
-          contactNumber: r.contactNumber,
-          isActive: r.isActive,
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt,
-          usersCount: 0,
-          menusCount: 0,
-          tablesCount: 0,
-        }),
-    );
-
     res.json({
       status: 'success',
-      data: response,
+      data: restaurants,
     });
   });
 
-  /**
-   * Get restaurant by ID
-   * GET /api/v1/restaurants/:id
-   */
   getById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id as string;
 
     const details = await this.restaurantService.getDetails(id);
 
-    if (!details) {
-      res.status(404).json({
-        status: 'error',
-        message: 'Restaurant not found',
-      });
-      return;
-    }
-
-    const { restaurant, usersCount, tablesCount, menusCount } = details;
-
-    const response = new RestaurantResponseDto({
-      id: restaurant.id,
-      name: restaurant.name,
-      address: restaurant.address,
-      contactNumber: restaurant.contactNumber,
-      isActive: restaurant.isActive,
-      createdAt: restaurant.createdAt,
-      updatedAt: restaurant.updatedAt,
-      usersCount,
-      tablesCount,
-      menusCount,
-    });
-
     res.json({
       status: 'success',
-      data: response,
+      data: details,
     });
   });
 
-  /**
-   * Create restaurant
-   * POST /api/v1/restaurants
-   */
   create = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const dto = new CreateRestaurantRequestDto(req.body);
-
-    if (!dto.validate()) {
-      res.status(400).json({
-        status: 'error',
-        message: 'Invalid restaurant data',
-      });
-      return;
-    }
-
     const restaurant = await this.restaurantService.create({
-      name: dto.name,
-      address: dto.address,
-      contactNumber: dto.contactNumber,
-    });
-
-    const response = new RestaurantResponseDto({
-      id: restaurant.id,
-      name: restaurant.name,
-      address: restaurant.address,
-      contactNumber: restaurant.contactNumber,
-      isActive: restaurant.isActive,
-      createdAt: restaurant.createdAt,
-      updatedAt: restaurant.updatedAt,
-      usersCount: 0,
-      menusCount: 0,
-      tablesCount: 0,
+      name: req.body.name as string,
+      address: req.body.address as string,
+      contactNumber: req.body.contactNumber as string,
     });
 
     res.status(201).json({
       status: 'success',
-      data: response,
+      data: restaurant,
     });
   });
 
-  /**
-   * Update restaurant
-   * PUT /api/v1/restaurants/:id
-   */
-  update = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const id = req.params.id as string;
-    const dto = new UpdateRestaurantRequestDto(req.body);
+  update = asyncHandler(
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      const id = req.params.id as string;
 
-    if (!dto.validate()) {
-      res.status(400).json({
-        status: 'error',
-        message: 'Invalid restaurant data',
+      if (!req.user) {
+        res.status(401).json({
+          status: 'error',
+          message: 'Authentication required',
+        });
+        return;
+      }
+
+      const restaurant = await this.restaurantService.update(
+        id,
+        {
+          name: req.body.name as string | undefined,
+          address: req.body.address as string | undefined,
+          contactNumber: req.body.contactNumber as string | undefined,
+        },
+        req.user,
+      );
+
+      res.json({
+        status: 'success',
+        data: restaurant,
       });
-      return;
-    }
+    },
+  );
 
-    const restaurant = await this.restaurantService.update(id, {
-      name: dto.name,
-      address: dto.address,
-      contactNumber: dto.contactNumber,
-      isActive: dto.isActive,
-    });
+  delete = asyncHandler(
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      const id = req.params.id as string;
 
-    const response = new RestaurantResponseDto({
-      id: restaurant.id,
-      name: restaurant.name,
-      address: restaurant.address,
-      contactNumber: restaurant.contactNumber,
-      isActive: restaurant.isActive,
-      createdAt: restaurant.createdAt,
-      updatedAt: restaurant.updatedAt,
-      usersCount: 0,
-      menusCount: 0,
-      tablesCount: 0,
-    });
+      if (!req.user) {
+        res.status(401).json({
+          status: 'error',
+          message: 'Authentication required',
+        });
+        return;
+      }
 
-    res.json({
-      status: 'success',
-      data: response,
-    });
-  });
+      await this.restaurantService.deactivate(id, req.user);
 
-  /**
-   * Delete restaurant (deactivate)
-   * DELETE /api/v1/restaurants/:id
-   */
-  delete = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const id = req.params.id as string;
+      res.json({
+        status: 'success',
+        message: 'Restaurant deactivated successfully',
+      });
+    },
+  );
 
-    await this.restaurantService.deactivate(id);
-
-    res.json({
-      status: 'success',
-      message: 'Restaurant deactivated successfully',
-    });
-  });
-
-  /**
-   * Get restaurant statistics
-   * GET /api/v1/restaurants/stats
-   */
   getStats = asyncHandler(
     async (_req: Request, res: Response): Promise<void> => {
       const stats = await this.restaurantService.getStats();

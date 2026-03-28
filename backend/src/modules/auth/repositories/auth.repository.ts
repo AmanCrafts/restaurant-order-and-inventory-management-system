@@ -1,14 +1,18 @@
-/**
- * Auth Repository
- * Handles database operations for authentication
- */
-
 import { prisma } from '../../../shared/config/database';
-import { User } from '../../../models/entities/user.entity';
 import { UserRole } from '../../../shared/constants/roles';
 
+export interface AuthUserRecord {
+  id: string;
+  restaurantId: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: Date;
+}
+
 export interface CreateUserData {
-  id?: string;
   restaurantId: string;
   name: string;
   email: string;
@@ -17,77 +21,46 @@ export interface CreateUserData {
   isActive?: boolean;
 }
 
-export interface UpdateUserData {
-  name?: string;
-  email?: string;
-  passwordHash?: string;
-  role?: UserRole;
-  isActive?: boolean;
+function mapUser(user: {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  role: string;
+  is_active: boolean;
+  created_at: Date;
+}): AuthUserRecord {
+  return {
+    id: user.id,
+    restaurantId: user.restaurant_id,
+    name: user.name,
+    email: user.email,
+    passwordHash: user.password_hash,
+    role: user.role as UserRole,
+    isActive: user.is_active,
+    createdAt: user.created_at,
+  };
 }
 
 export class AuthRepository {
-  /**
-   * Find user by ID
-   */
-  async findById(id: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+  async findById(id: string): Promise<AuthUserRecord | null> {
+    const user = await prisma.user.findUnique({ where: { id } });
 
-    if (!user) return null;
-
-    return User.fromPrisma(user);
+    return user ? mapUser(user) : null;
   }
 
-  /**
-   * Find user by email
-   */
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<AuthUserRecord | null> {
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
 
-    if (!user) return null;
-
-    return User.fromPrisma(user);
+    return user ? mapUser(user) : null;
   }
 
-  /**
-   * Find user by email with password hash
-   */
-  async findByEmailWithPassword(email: string): Promise<{
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-    passwordHash: string;
-    restaurantId: string;
-    isActive: boolean;
-  } | null> {
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (!user) return null;
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      passwordHash: user.password_hash,
-      restaurantId: user.restaurant_id,
-      isActive: user.is_active,
-    };
-  }
-
-  /**
-   * Create new user
-   */
-  async create(data: CreateUserData): Promise<User> {
+  async create(data: CreateUserData): Promise<AuthUserRecord> {
     const user = await prisma.user.create({
       data: {
-        id: data.id,
         restaurant_id: data.restaurantId,
         name: data.name,
         email: data.email.toLowerCase(),
@@ -97,53 +70,19 @@ export class AuthRepository {
       },
     });
 
-    return User.fromPrisma(user);
+    return mapUser(user);
   }
 
-  /**
-   * Update user
-   */
-  async update(id: string, data: UpdateUserData): Promise<User | null> {
-    const updateData: Record<string, unknown> = {};
-
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.email !== undefined) updateData.email = data.email.toLowerCase();
-    if (data.passwordHash !== undefined)
-      updateData.password_hash = data.passwordHash;
-    if (data.role !== undefined) updateData.role = data.role;
-    if (data.isActive !== undefined) updateData.is_active = data.isActive;
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-    });
-
-    return User.fromPrisma(user);
-  }
-
-  /**
-   * Update last login timestamp
-   */
-  async updateLastLogin(id: string): Promise<void> {
-    await prisma.user.update({
-      where: { id },
-      data: {},
-    });
-  }
-
-  /**
-   * Update password
-   */
   async updatePassword(id: string, passwordHash: string): Promise<void> {
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id },
       data: { password_hash: passwordHash },
     });
+    if (!user) {
+      throw new Error('Failed to update password');
+    }
   }
 
-  /**
-   * Check if email exists
-   */
   async emailExists(email: string): Promise<boolean> {
     const count = await prisma.user.count({
       where: { email: email.toLowerCase() },
@@ -151,9 +90,6 @@ export class AuthRepository {
     return count > 0;
   }
 
-  /**
-   * Get user count by restaurant
-   */
   async getCountByRestaurant(restaurantId: string): Promise<number> {
     return prisma.user.count({
       where: { restaurant_id: restaurantId },

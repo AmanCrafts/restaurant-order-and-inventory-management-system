@@ -12,8 +12,8 @@ export { AuthService } from './services/auth.service';
 // Export repositories
 export {
   AuthRepository,
+  AuthUserRecord,
   CreateUserData,
-  UpdateUserData,
 } from './repositories/auth.repository';
 
 // Export routes

@@ -1,8 +1,3 @@
-/**
- * Restaurant Routes
- * Restaurant management endpoints
- */
-
 import { Router } from 'express';
 import { RestaurantController } from '../controllers/restaurant.controller';
 import { validateRequest } from '../../../shared/middleware/validate-request';
@@ -32,7 +27,6 @@ const updateRestaurantSchema = z.object({
     .string()
     .min(10, 'Contact number must be at least 10 characters')
     .optional(),
-  isActive: z.boolean().optional(),
 });
 
 const restaurantIdSchema = z.object({
@@ -48,15 +42,14 @@ router.get(
   restaurantController.getById,
 );
 
-// Protected routes - Admin only
+// Public bootstrap route
 router.post(
   '/',
-  authenticate(),
-  authorize([UserRole.ADMIN]),
   validateRequest(createRestaurantSchema),
   restaurantController.create,
 );
 
+// Protected routes - Restaurant admin only
 router.put(
   '/:id',
   authenticate(),

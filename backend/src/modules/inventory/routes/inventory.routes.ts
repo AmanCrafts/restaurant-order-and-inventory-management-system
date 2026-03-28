@@ -32,7 +32,6 @@ const updateInventorySchema = z.object({
     .number()
     .min(0, 'Reorder threshold cannot be negative')
     .optional(),
-  isActive: z.boolean().optional(),
 });
 
 const updateStockSchema = z.object({
@@ -53,14 +52,12 @@ const restaurantIdSchema = z.object({
 const inventoryListQuerySchema = z.object({
   restaurantId: z.string().uuid('Invalid restaurant ID').optional(),
   search: z.string().optional(),
-  isActive: z.enum(['true', 'false']).optional(),
   lowStock: z.enum(['true', 'false']).optional(),
 });
 
 const searchQuerySchema = z.object({
   restaurantId: z.string().uuid('Invalid restaurant ID'),
   q: z.string().optional(),
-  isActive: z.enum(['true', 'false']).optional(),
   lowStock: z.enum(['true', 'false']).optional(),
 });
 
@@ -71,7 +68,7 @@ router.get(
   '/',
   authenticate(),
   authorize([UserRole.ADMIN]),
-  validateRequest(inventoryListQuerySchema, undefined),
+  validateRequest(undefined, undefined, inventoryListQuerySchema),
   inventoryController.getAll,
 );
 
@@ -79,7 +76,7 @@ router.get(
   '/search',
   authenticate(),
   authorize([UserRole.ADMIN]),
-  validateRequest(searchQuerySchema, undefined),
+  validateRequest(undefined, undefined, searchQuerySchema),
   inventoryController.search,
 );
 
@@ -139,24 +136,8 @@ router.put(
   inventoryController.updateStock,
 );
 
-router.patch(
-  '/:id/activate',
-  authenticate(),
-  authorize([UserRole.ADMIN]),
-  validateRequest(undefined, inventoryIdSchema),
-  inventoryController.activate,
-);
-
 router.delete(
   '/:id',
-  authenticate(),
-  authorize([UserRole.ADMIN]),
-  validateRequest(undefined, inventoryIdSchema),
-  inventoryController.deactivate,
-);
-
-router.delete(
-  '/:id/permanent',
   authenticate(),
   authorize([UserRole.ADMIN]),
   validateRequest(undefined, inventoryIdSchema),

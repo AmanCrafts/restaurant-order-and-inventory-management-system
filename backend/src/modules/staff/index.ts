@@ -13,6 +13,7 @@ export { StaffService } from './services/staff.service';
 export {
   StaffRepository,
   CreateStaffData,
+  StaffRecord,
   UpdateStaffData,
   StaffFilter,
 } from './repositories/staff.repository';

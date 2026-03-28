@@ -1,11 +1,16 @@
-/**
- * Staff Repository
- * Handles database operations for staff management
- */
-
 import { prisma } from '../../../shared/config/database';
-import { User } from '../../../models/entities/user.entity';
 import { UserRole } from '../../../shared/constants/roles';
+
+export interface StaffRecord {
+  id: string;
+  restaurantId: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: Date;
+  ordersCount: number;
+}
 
 export interface CreateStaffData {
   restaurantId: string;
@@ -30,11 +35,30 @@ export interface StaffFilter {
   search?: string;
 }
 
+function mapStaff(user: {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: Date;
+  _count?: { orders: number };
+}): StaffRecord {
+  return {
+    id: user.id,
+    restaurantId: user.restaurant_id,
+    name: user.name,
+    email: user.email,
+    role: user.role as UserRole,
+    isActive: user.is_active,
+    createdAt: user.created_at,
+    ordersCount: user._count?.orders ?? 0,
+  };
+}
+
 export class StaffRepository {
-  /**
-   * Find all staff members with optional filtering
-   */
-  async findAll(filter?: StaffFilter): Promise<User[]> {
+  async findAll(filter?: StaffFilter): Promise<StaffRecord[]> {
     const where: Record<string, unknown> = {};
 
     if (filter?.restaurantId) {
@@ -58,43 +82,36 @@ export class StaffRepository {
 
     const users = await prisma.user.findMany({
       where,
+      include: {
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
       orderBy: { created_at: 'desc' },
     });
 
-    return users.map((u) => User.fromPrisma(u));
+    return users.map(mapStaff);
   }
 
-  /**
-   * Find staff member by ID
-   */
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<StaffRecord | null> {
     const user = await prisma.user.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
     });
 
-    if (!user) return null;
-
-    return User.fromPrisma(user);
+    return user ? mapStaff(user) : null;
   }
 
-  /**
-   * Find staff member by email
-   */
-  async findByEmail(email: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (!user) return null;
-
-    return User.fromPrisma(user);
-  }
-
-  /**
-   * Find staff member by ID with restaurant details
-   */
   async findByIdWithRestaurant(id: string): Promise<{
-    user: User;
+    user: StaffRecord;
     restaurant: {
       id: string;
       name: string;
@@ -111,37 +128,41 @@ export class StaffRepository {
             address: true,
           },
         },
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
       },
     });
 
-    if (!user || !user.restaurant) return null;
+    if (!user || !user.restaurant) {
+      return null;
+    }
 
     return {
-      user: User.fromPrisma(user),
-      restaurant: {
-        id: user.restaurant.id,
-        name: user.restaurant.name,
-        address: user.restaurant.address,
-      },
+      user: mapStaff(user),
+      restaurant: user.restaurant,
     };
   }
 
-  /**
-   * Find all staff members by restaurant ID
-   */
-  async findByRestaurantId(restaurantId: string): Promise<User[]> {
+  async findByRestaurantId(restaurantId: string): Promise<StaffRecord[]> {
     const users = await prisma.user.findMany({
       where: { restaurant_id: restaurantId },
+      include: {
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
       orderBy: { created_at: 'desc' },
     });
 
-    return users.map((u) => User.fromPrisma(u));
+    return users.map(mapStaff);
   }
 
-  /**
-   * Create new staff member
-   */
-  async create(data: CreateStaffData): Promise<User> {
+  async create(data: CreateStaffData): Promise<StaffRecord> {
     const user = await prisma.user.create({
       data: {
         restaurant_id: data.restaurantId,
@@ -151,15 +172,19 @@ export class StaffRepository {
         role: data.role,
         is_active: data.isActive ?? true,
       },
+      include: {
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
     });
 
-    return User.fromPrisma(user);
+    return mapStaff(user);
   }
 
-  /**
-   * Update staff member
-   */
-  async update(id: string, data: UpdateStaffData): Promise<User | null> {
+  async update(id: string, data: UpdateStaffData): Promise<StaffRecord | null> {
     const updateData: Record<string, unknown> = {};
 
     if (data.name !== undefined) updateData.name = data.name;
@@ -170,14 +195,18 @@ export class StaffRepository {
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
+      include: {
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
     });
 
-    return User.fromPrisma(user);
+    return mapStaff(user);
   }
 
-  /**
-   * Update staff member's password
-   */
   async updatePassword(id: string, passwordHash: string): Promise<void> {
     await prisma.user.update({
       where: { id },
@@ -185,9 +214,6 @@ export class StaffRepository {
     });
   }
 
-  /**
-   * Soft delete staff member (deactivate)
-   */
   async softDelete(id: string): Promise<void> {
     await prisma.user.update({
       where: { id },
@@ -195,99 +221,69 @@ export class StaffRepository {
     });
   }
 
-  /**
-   * Hard delete staff member
-   */
   async hardDelete(id: string): Promise<void> {
     await prisma.user.delete({
       where: { id },
     });
   }
 
-  /**
-   * Check if staff member exists
-   */
-  async exists(id: string): Promise<boolean> {
-    const count = await prisma.user.count({
-      where: { id },
-    });
-    return count > 0;
-  }
-
-  /**
-   * Check if email exists
-   */
   async emailExists(email: string, excludeId?: string): Promise<boolean> {
-    const where: Record<string, unknown> = {
-      email: email.toLowerCase(),
-    };
+    const count = await prisma.user.count({
+      where: {
+        email: email.toLowerCase(),
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+    });
 
-    if (excludeId) {
-      where.NOT = { id: excludeId };
-    }
-
-    const count = await prisma.user.count({ where });
     return count > 0;
   }
 
-  /**
-   * Count staff by restaurant
-   */
-  async countByRestaurant(restaurantId: string): Promise<number> {
-    return prisma.user.count({
-      where: { restaurant_id: restaurantId },
-    });
-  }
-
-  /**
-   * Count staff by role
-   */
-  async countByRole(restaurantId: string, role: UserRole): Promise<number> {
+  async countActiveAdmins(
+    restaurantId: string,
+    excludeId?: string,
+  ): Promise<number> {
     return prisma.user.count({
       where: {
         restaurant_id: restaurantId,
-        role,
+        role: UserRole.ADMIN,
+        is_active: true,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
       },
     });
   }
 
-  /**
-   * Get staff statistics for restaurant
-   */
   async getStats(restaurantId: string): Promise<{
     total: number;
     active: number;
     inactive: number;
     byRole: Record<string, number>;
   }> {
-    const [total, active, inactive, adminCount, waiterCount, cookCount] =
-      await Promise.all([
-        prisma.user.count({ where: { restaurant_id: restaurantId } }),
-        prisma.user.count({
-          where: { restaurant_id: restaurantId, is_active: true },
-        }),
-        prisma.user.count({
-          where: { restaurant_id: restaurantId, is_active: false },
-        }),
-        prisma.user.count({
-          where: { restaurant_id: restaurantId, role: UserRole.ADMIN },
-        }),
-        prisma.user.count({
-          where: { restaurant_id: restaurantId, role: UserRole.WAITER },
-        }),
-        prisma.user.count({
-          where: { restaurant_id: restaurantId, role: UserRole.COOK },
-        }),
-      ]);
+    const [total, active, admins, waiters, cooks] = await Promise.all([
+      prisma.user.count({
+        where: { restaurant_id: restaurantId },
+      }),
+      prisma.user.count({
+        where: { restaurant_id: restaurantId, is_active: true },
+      }),
+      prisma.user.count({
+        where: { restaurant_id: restaurantId, role: UserRole.ADMIN },
+      }),
+      prisma.user.count({
+        where: { restaurant_id: restaurantId, role: UserRole.WAITER },
+      }),
+      prisma.user.count({
+        where: { restaurant_id: restaurantId, role: UserRole.COOK },
+      }),
+    ]);
 
     return {
       total,
       active,
-      inactive,
+      inactive: total - active,
       byRole: {
-        ADMIN: adminCount,
-        WAITER: waiterCount,
-        COOK: cookCount,
+        [UserRole.ADMIN]: admins,
+        [UserRole.WAITER]: waiters,
+        [UserRole.COOK]: cooks,
       },
     };
   }

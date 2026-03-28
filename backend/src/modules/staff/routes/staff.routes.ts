@@ -63,7 +63,7 @@ router.get(
   '/',
   authenticate(),
   authorize([UserRole.ADMIN]),
-  validateRequest(staffListQuerySchema, undefined),
+  validateRequest(undefined, undefined, staffListQuerySchema),
   staffController.getAll,
 );
 
@@ -71,7 +71,7 @@ router.get(
   '/search',
   authenticate(),
   authorize([UserRole.ADMIN]),
-  validateRequest(searchQuerySchema, undefined),
+  validateRequest(undefined, undefined, searchQuerySchema),
   staffController.search,
 );
 

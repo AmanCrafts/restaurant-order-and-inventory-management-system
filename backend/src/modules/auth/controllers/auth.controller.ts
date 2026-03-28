@@ -1,23 +1,8 @@
-/**
- * Auth Controller
- * Handles HTTP requests for authentication
- */
-
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { asyncHandler } from '../../../shared/middleware/error-handler';
 import { UserRole } from '../../../shared/constants/roles';
-import {
-  LoginRequestDto,
-  RegisterRequestDto,
-} from '../../../models/dto/requests/auth.request.dto';
-import {
-  LoginResponseDto,
-  RegisterResponseDto,
-  LogoutResponseDto,
-  UserDataDto,
-} from '../../../models/dto/responses/auth.response.dto';
-// import logger from '../../../shared/utils/logger';
+import { AuthRequest } from '../../../shared/middleware/auth';
 
 export class AuthController {
   private authService: AuthService;
@@ -26,27 +11,9 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
-  /**
-   * Login endpoint
-   * POST /api/v1/auth/login
-   */
   login = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const dto = new LoginRequestDto(req.body);
-
-    if (!dto.validate()) {
-      res.status(400).json({
-        status: 'error',
-        message: 'Invalid login data',
-      });
-      return;
-    }
-
-    const result = await this.authService.login(dto.email, dto.password);
-
-    const response = new LoginResponseDto({
-      token: result.token,
-      user: new UserDataDto(result.user),
-    });
+    const { email, password } = req.body as { email: string; password: string };
+    const response = await this.authService.login(email, password);
 
     res.json({
       status: 'success',
@@ -54,47 +21,37 @@ export class AuthController {
     });
   });
 
-  /**
-   * Register endpoint
-   * POST /api/v1/auth/register
-   */
   register = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const dto = new RegisterRequestDto(req.body);
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      const { email, password, name, role, restaurantId } = req.body as {
+        email: string;
+        password: string;
+        name: string;
+        role: UserRole;
+        restaurantId: string;
+      };
 
-      if (!dto.validate()) {
-        res.status(400).json({
-          status: 'error',
-          message: 'Invalid registration data',
-        });
-        return;
-      }
-
-      const result = await this.authService.register({
-        email: dto.email,
-        password: dto.password,
-        name: dto.name,
-        role: dto.role as UserRole,
-        restaurantId: dto.restaurantId,
-      });
-
-      const response = new RegisterResponseDto({
-        token: result.token,
-        user: new UserDataDto(result.user),
-        message: 'User registered successfully',
-      });
+      const response = await this.authService.register(
+        {
+          email,
+          password,
+          name,
+          role,
+          restaurantId,
+        },
+        req.user,
+      );
 
       res.status(201).json({
         status: 'success',
-        data: response,
+        data: {
+          ...response,
+          message: 'User registered successfully',
+        },
       });
     },
   );
 
-  /**
-   * Logout endpoint
-   * POST /api/v1/auth/logout
-   */
   logout = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const token = req.headers.authorization?.split(' ')[1];
 
@@ -102,21 +59,17 @@ export class AuthController {
       await this.authService.logout(token);
     }
 
-    const response = new LogoutResponseDto();
-
     res.json({
       status: 'success',
-      data: response,
+      data: { message: 'Logged out successfully' },
     });
   });
 
-  /**
-   * Refresh token endpoint
-   * POST /api/v1/auth/refresh
-   */
   refreshToken = asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const { refreshToken } = req.body;
+      const refreshToken =
+        (req.body as { refreshToken?: string }).refreshToken ||
+        req.headers.authorization?.split(' ')[1];
 
       if (!refreshToken) {
         res.status(400).json({
@@ -126,12 +79,7 @@ export class AuthController {
         return;
       }
 
-      const result = await this.authService.refreshToken(refreshToken);
-
-      const response = new LoginResponseDto({
-        token: result.token,
-        user: new UserDataDto(result.user),
-      });
+      const response = await this.authService.refreshToken(refreshToken);
 
       res.json({
         status: 'success',
@@ -140,15 +88,9 @@ export class AuthController {
     },
   );
 
-  /**
-   * Get current user endpoint
-   * GET /api/v1/auth/me
-   */
   getCurrentUser = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
         res.status(401).json({
           status: 'error',
           message: 'Authentication required',
@@ -156,7 +98,7 @@ export class AuthController {
         return;
       }
 
-      const user = await this.authService.getCurrentUser(token);
+      const user = await this.authService.getCurrentUser(req.user.id);
 
       if (!user) {
         res.status(401).json({
@@ -169,28 +111,26 @@ export class AuthController {
       res.json({
         status: 'success',
         data: {
-          user: new UserDataDto(user),
+          user,
         },
       });
     },
   );
 
-  /**
-   * Change password endpoint
-   * POST /api/v1/auth/change-password
-   */
   changePassword = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const token = req.headers.authorization?.split(' ')[1];
-      const { currentPassword, newPassword } = req.body;
-
-      if (!token) {
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
         res.status(401).json({
           status: 'error',
           message: 'Authentication required',
         });
         return;
       }
+
+      const { currentPassword, newPassword } = req.body as {
+        currentPassword: string;
+        newPassword: string;
+      };
 
       if (!currentPassword || !newPassword) {
         res.status(400).json({
@@ -200,10 +140,8 @@ export class AuthController {
         return;
       }
 
-      const payload = this.authService.verifyToken(token);
-
       await this.authService.changePassword(
-        payload.userId,
+        req.user.id,
         currentPassword,
         newPassword,
       );

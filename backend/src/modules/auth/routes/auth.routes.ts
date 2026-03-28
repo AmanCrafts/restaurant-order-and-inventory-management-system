@@ -1,12 +1,10 @@
-/**
- * Auth Routes
- * Authentication endpoints
- */
-
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { validateRequest } from '../../../shared/middleware/validate-request';
-import { authenticate } from '../../../shared/middleware/auth';
+import {
+  authenticate,
+  authenticateOptional,
+} from '../../../shared/middleware/auth';
 import { z } from 'zod';
 
 const router = Router();
@@ -41,10 +39,11 @@ const changePasswordSchema = z.object({
 router.post('/login', validateRequest(loginSchema), authController.login);
 router.post(
   '/register',
+  authenticateOptional(),
   validateRequest(registerSchema),
   authController.register,
 );
-router.post('/logout', authController.logout);
+router.post('/logout', authenticateOptional(), authController.logout);
 router.post(
   '/refresh',
   validateRequest(refreshTokenSchema),

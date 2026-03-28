@@ -1,19 +1,6 @@
-/**
- * Staff Controller
- * Handles HTTP requests for staff management
- */
-
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { StaffService } from '../services/staff.service';
 import { asyncHandler } from '../../../shared/middleware/error-handler';
-import {
-  CreateUserRequestDto,
-  UpdateUserRequestDto,
-} from '../../../models/dto/requests/user.request.dto';
-import {
-  UserResponseDto,
-  UserSummaryResponseDto,
-} from '../../../models/dto/responses/user.response.dto';
 import { UserRole } from '../../../shared/constants/roles';
 import { AuthRequest } from '../../../shared/middleware/auth';
 
@@ -24,256 +11,130 @@ export class StaffController {
     this.staffService = new StaffService();
   }
 
-  /**
-   * Get all staff members
-   * GET /api/v1/staff
-   */
-  getAll = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const restaurantId = req.query.restaurantId as string;
-    const role = req.query.role as UserRole;
-    const isActive = req.query.isActive as string | undefined;
-    const search = req.query.search as string;
+  getAll = asyncHandler(
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
+        return;
+      }
 
-    const filter: {
-      restaurantId?: string;
-      role?: UserRole;
-      isActive?: boolean;
-      search?: string;
-    } = {};
-
-    if (restaurantId) filter.restaurantId = restaurantId;
-    if (role) filter.role = role;
-    if (isActive !== undefined) {
-      filter.isActive = isActive === 'true';
-    }
-    if (search) filter.search = search;
-
-    const staff = await this.staffService.getAll(
-      Object.keys(filter).length > 0 ? filter : undefined,
-    );
-
-    const response = staff.map(
-      (s) =>
-        new UserSummaryResponseDto({
-          id: s.id,
-          name: s.name,
-          email: s.email,
-          role: s.role,
-          isActive: s.isActive,
-        }),
-    );
-
-    res.json({
-      status: 'success',
-      data: response,
-    });
-  });
-
-  /**
-   * Get staff member by ID
-   * GET /api/v1/staff/:id
-   */
-  getById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const id = req.params.id as string;
-
-    const result = await this.staffService.getByIdWithRestaurant(id);
-    const { user, restaurant } = result;
-
-    const response = new UserResponseDto({
-      id: user.id,
-      restaurantId: user.restaurantId,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      ordersCount: user.orders.length,
-    });
-
-    res.json({
-      status: 'success',
-      data: {
-        ...response,
-        restaurant: {
-          id: restaurant.id,
-          name: restaurant.name,
-          address: restaurant.address,
-        },
-      },
-    });
-  });
-
-  /**
-   * Get staff members by restaurant ID
-   * GET /api/v1/staff/restaurant/:restaurantId
-   */
-  getByRestaurant = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const restaurantId = req.params.restaurantId as string;
-
-      const staff = await this.staffService.getByRestaurantId(restaurantId);
-
-      const response = staff.map(
-        (s) =>
-          new UserResponseDto({
-            id: s.id,
-            restaurantId: s.restaurantId,
-            name: s.name,
-            email: s.email,
-            role: s.role,
-            isActive: s.isActive,
-            createdAt: s.createdAt,
-            updatedAt: s.updatedAt,
-            ordersCount: s.orders.length,
-          }),
-      );
+      const staff = await this.staffService.getAll(req.user, {
+        restaurantId: req.query.restaurantId as string | undefined,
+        role: req.query.role as UserRole | undefined,
+        isActive:
+          req.query.isActive !== undefined
+            ? req.query.isActive === 'true'
+            : undefined,
+        search: req.query.search as string | undefined,
+      });
 
       res.json({
         status: 'success',
-        data: response,
+        data: staff,
       });
     },
   );
 
-  /**
-   * Create new staff member
-   * POST /api/v1/staff
-   */
-  create = asyncHandler(
+  getById = asyncHandler(
     async (req: AuthRequest, res: Response): Promise<void> => {
-      const dto = new CreateUserRequestDto(req.body);
-
-      if (!dto.validate()) {
-        res.status(400).json({
-          status: 'error',
-          message: 'Invalid staff data',
-        });
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
-      const adminId = req.user?.id;
-      if (!adminId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'Unauthorized',
-        });
+      const result = await this.staffService.getByIdWithRestaurant(
+        req.params.id as string,
+        req.user,
+      );
+
+      res.json({
+        status: 'success',
+        data: result,
+      });
+    },
+  );
+
+  getByRestaurant = asyncHandler(
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
+        return;
+      }
+
+      const staff = await this.staffService.getByRestaurantId(
+        req.params.restaurantId as string,
+        req.user,
+      );
+
+      res.json({
+        status: 'success',
+        data: staff,
+      });
+    },
+  );
+
+  create = asyncHandler(
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
       const staff = await this.staffService.create(
         {
-          restaurantId: dto.restaurantId,
-          name: dto.name,
-          email: dto.email,
-          password: dto.password,
-          role: dto.role as UserRole,
+          restaurantId: req.body.restaurantId as string,
+          name: req.body.name as string,
+          email: req.body.email as string,
+          password: req.body.password as string,
+          role: req.body.role as UserRole,
         },
-        adminId,
+        req.user,
       );
-
-      const response = new UserResponseDto({
-        id: staff.id,
-        restaurantId: staff.restaurantId,
-        name: staff.name,
-        email: staff.email,
-        role: staff.role,
-        isActive: staff.isActive,
-        createdAt: staff.createdAt,
-        updatedAt: staff.updatedAt,
-        ordersCount: 0,
-      });
 
       res.status(201).json({
         status: 'success',
-        data: response,
+        data: staff,
       });
     },
   );
 
-  /**
-   * Update staff member
-   * PUT /api/v1/staff/:id
-   */
   update = asyncHandler(
     async (req: AuthRequest, res: Response): Promise<void> => {
-      const id = req.params.id as string;
-      const dto = new UpdateUserRequestDto(req.body);
-
-      if (!dto.validate()) {
-        res.status(400).json({
-          status: 'error',
-          message: 'Invalid staff data',
-        });
-        return;
-      }
-
-      const adminId = req.user?.id;
-      if (!adminId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'Unauthorized',
-        });
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
       const staff = await this.staffService.update(
-        id,
+        req.params.id as string,
         {
-          name: dto.name,
-          email: dto.email,
-          role: dto.role as UserRole,
-          isActive: dto.isActive,
+          name: req.body.name as string | undefined,
+          email: req.body.email as string | undefined,
+          role: req.body.role as UserRole | undefined,
+          isActive: req.body.isActive as boolean | undefined,
         },
-        adminId,
+        req.user,
       );
-
-      const response = new UserResponseDto({
-        id: staff.id,
-        restaurantId: staff.restaurantId,
-        name: staff.name,
-        email: staff.email,
-        role: staff.role,
-        isActive: staff.isActive,
-        createdAt: staff.createdAt,
-        updatedAt: staff.updatedAt,
-        ordersCount: staff.orders.length,
-      });
 
       res.json({
         status: 'success',
-        data: response,
+        data: staff,
       });
     },
   );
 
-  /**
-   * Update staff member password
-   * PUT /api/v1/staff/:id/password
-   */
   updatePassword = asyncHandler(
     async (req: AuthRequest, res: Response): Promise<void> => {
-      const id = req.params.id as string;
-      const { newPassword } = req.body;
-
-      if (!newPassword || newPassword.length < 6) {
-        res.status(400).json({
-          status: 'error',
-          message: 'New password must be at least 6 characters',
-        });
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
-      const adminId = req.user?.id;
-      if (!adminId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'Unauthorized',
-        });
-        return;
-      }
-
-      await this.staffService.updatePassword(id, newPassword, adminId);
+      await this.staffService.updatePassword(
+        req.params.id as string,
+        req.body.newPassword as string,
+        req.user,
+      );
 
       res.json({
         status: 'success',
@@ -282,24 +143,14 @@ export class StaffController {
     },
   );
 
-  /**
-   * Deactivate staff member
-   * DELETE /api/v1/staff/:id
-   */
   deactivate = asyncHandler(
     async (req: AuthRequest, res: Response): Promise<void> => {
-      const id = req.params.id as string;
-
-      const adminId = req.user?.id;
-      if (!adminId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'Unauthorized',
-        });
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
-      await this.staffService.deactivate(id, adminId);
+      await this.staffService.deactivate(req.params.id as string, req.user);
 
       res.json({
         status: 'success',
@@ -308,62 +159,33 @@ export class StaffController {
     },
   );
 
-  /**
-   * Activate staff member
-   * PATCH /api/v1/staff/:id/activate
-   */
   activate = asyncHandler(
     async (req: AuthRequest, res: Response): Promise<void> => {
-      const id = req.params.id as string;
-
-      const adminId = req.user?.id;
-      if (!adminId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'Unauthorized',
-        });
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
-      const staff = await this.staffService.activate(id, adminId);
-
-      const response = new UserResponseDto({
-        id: staff.id,
-        restaurantId: staff.restaurantId,
-        name: staff.name,
-        email: staff.email,
-        role: staff.role,
-        isActive: staff.isActive,
-        createdAt: staff.createdAt,
-        updatedAt: staff.updatedAt,
-        ordersCount: staff.orders.length,
-      });
+      const staff = await this.staffService.activate(
+        req.params.id as string,
+        req.user,
+      );
 
       res.json({
         status: 'success',
-        data: response,
+        data: staff,
       });
     },
   );
 
-  /**
-   * Delete staff member permanently
-   * DELETE /api/v1/staff/:id/permanent
-   */
   delete = asyncHandler(
     async (req: AuthRequest, res: Response): Promise<void> => {
-      const id = req.params.id as string;
-
-      const adminId = req.user?.id;
-      if (!adminId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'Unauthorized',
-        });
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
         return;
       }
 
-      await this.staffService.delete(id, adminId);
+      await this.staffService.delete(req.params.id as string, req.user);
 
       res.json({
         status: 'success',
@@ -372,15 +194,17 @@ export class StaffController {
     },
   );
 
-  /**
-   * Get staff statistics for a restaurant
-   * GET /api/v1/staff/stats/:restaurantId
-   */
   getStats = asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const restaurantId = req.params.restaurantId as string;
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
+        return;
+      }
 
-      const stats = await this.staffService.getStats(restaurantId);
+      const stats = await this.staffService.getStats(
+        req.params.restaurantId as string,
+        req.user,
+      );
 
       res.json({
         status: 'success',
@@ -389,47 +213,30 @@ export class StaffController {
     },
   );
 
-  /**
-   * Search staff members
-   * GET /api/v1/staff/search
-   */
-  search = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const restaurantId = req.query.restaurantId as string;
-    const query = req.query.q as string;
-    const role = req.query.role as UserRole;
-    const isActive = req.query.isActive as string | undefined;
+  search = asyncHandler(
+    async (req: AuthRequest, res: Response): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({ status: 'error', message: 'Unauthorized' });
+        return;
+      }
 
-    if (!restaurantId) {
-      res.status(400).json({
-        status: 'error',
-        message: 'restaurantId is required',
+      const staff = await this.staffService.search({
+        restaurantId: req.query.restaurantId as string,
+        query: req.query.q as string | undefined,
+        role: req.query.role as UserRole | undefined,
+        isActive:
+          req.query.isActive !== undefined
+            ? req.query.isActive === 'true'
+            : undefined,
+        actor: req.user,
       });
-      return;
-    }
 
-    const staff = await this.staffService.search({
-      restaurantId,
-      query,
-      role,
-      isActive: isActive !== undefined ? isActive === 'true' : undefined,
-    });
-
-    const response = staff.map(
-      (s) =>
-        new UserSummaryResponseDto({
-          id: s.id,
-          name: s.name,
-          email: s.email,
-          role: s.role,
-          isActive: s.isActive,
-        }),
-    );
-
-    res.json({
-      status: 'success',
-      data: response,
-    });
-  });
+      res.json({
+        status: 'success',
+        data: staff,
+      });
+    },
+  );
 }
 
 export default StaffController;
