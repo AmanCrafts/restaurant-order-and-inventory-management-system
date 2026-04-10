@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, Button, Badge } from '../../components/common';
+import { AddTableModal, EditTableModal } from '../../components/modals';
 import { TableService } from '../../services';
 import type { Table } from '../../types';
 import { TableStatus } from '../../types';
@@ -22,6 +23,8 @@ export const TablesManagement: React.FC = () => {
     occupied: 0,
     free: 0,
   });
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTable, setEditingTable] = useState<Table | null>(null);
 
   useEffect(() => {
     if (user?.restaurantId) {
@@ -70,7 +73,7 @@ export const TablesManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Table Management</h1>
           <p className="text-gray-600">Manage your restaurant tables</p>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={18} />}>
+        <Button variant="primary" leftIcon={<Plus size={18} />} onClick={() => setShowAddModal(true)}>
           Add Table
         </Button>
       </div>
@@ -114,6 +117,20 @@ export const TablesManagement: React.FC = () => {
         </Card>
       </div>
 
+      {/* Modals */}
+      <AddTableModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={fetchTables}
+        restaurantId={user?.restaurantId || ''}
+      />
+      <EditTableModal
+        isOpen={!!editingTable}
+        onClose={() => setEditingTable(null)}
+        onSuccess={fetchTables}
+        table={editingTable}
+      />
+
       {/* Tables Grid */}
       <Card>
         {isLoading ? (
@@ -143,11 +160,11 @@ export const TablesManagement: React.FC = () => {
                   <div className="mt-2">{getStatusBadge(table.status)}</div>
                 </div>
                 <div className="mt-3 flex gap-1">
-                  <button className="p-1.5 hover:bg-white hover:shadow-sm rounded-md text-gray-600">
+                  <button
+                    className="p-1.5 hover:bg-white hover:shadow-sm rounded-md text-gray-600"
+                    onClick={() => setEditingTable(table)}
+                  >
                     <Edit2 size={14} />
-                  </button>
-                  <button className="p-1.5 hover:bg-white hover:shadow-sm rounded-md text-red-600">
-                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>

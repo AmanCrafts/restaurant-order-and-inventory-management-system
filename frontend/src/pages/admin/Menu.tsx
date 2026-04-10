@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, Button, Badge } from '../../components/common';
+import { AddCategoryModal, AddMenuItemModal } from '../../components/modals';
 import { MenuService } from '../../services';
 import type { MenuCategory, MenuItem } from '../../types';
 import { Plus, Edit2, Trash2, Search, DollarSign, Clock } from 'lucide-react';
@@ -11,6 +12,8 @@ export const MenuManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showItemModal, setShowItemModal] = useState(false);
 
   useEffect(() => {
     if (user?.restaurantId) {
@@ -48,10 +51,10 @@ export const MenuManagement: React.FC = () => {
           <p className="text-gray-600">Manage your restaurant menu</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" leftIcon={<Plus size={18} />}>
+          <Button variant="secondary" leftIcon={<Plus size={18} />} onClick={() => setShowCategoryModal(true)}>
             Add Category
           </Button>
-          <Button variant="primary" leftIcon={<Plus size={18} />}>
+          <Button variant="primary" leftIcon={<Plus size={18} />} onClick={() => setShowItemModal(true)}>
             Add Item
           </Button>
         </div>
@@ -145,6 +148,20 @@ export const MenuManagement: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Modals */}
+      <AddCategoryModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        onSuccess={fetchMenu}
+        restaurantId={user?.restaurantId || ''}
+      />
+      <AddMenuItemModal
+        isOpen={showItemModal}
+        onClose={() => setShowItemModal(false)}
+        onSuccess={fetchMenu}
+        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+      />
     </div>
   );
 };
