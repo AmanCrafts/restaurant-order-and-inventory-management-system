@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, Button, Badge } from '../../components/common';
+import { AddStaffModal } from '../../components/modals';
 import { StaffService } from '../../services';
 import type { User } from '../../types';
 import { UserRole } from '../../types';
@@ -16,6 +17,7 @@ export const StaffManagement: React.FC = () => {
   const [staff, setStaff] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     if (user?.restaurantId) {
@@ -79,6 +81,14 @@ export const StaffManagement: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Add Staff Modal */}
+      <AddStaffModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={fetchStaff}
+        restaurantId={user?.restaurantId || ''}
+      />
 
       {/* Staff List */}
       <Card>

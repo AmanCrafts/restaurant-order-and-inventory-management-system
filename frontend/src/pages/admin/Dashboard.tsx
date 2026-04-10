@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Card, Badge } from '../../components/common';
+import { Card, Badge, Button } from '../../components/common';
 import {
   Users,
   UtensilsCrossed,
